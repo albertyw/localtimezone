@@ -6,10 +6,6 @@ import (
 
 type polygon []Point
 
-func newPoint(lon, lat *float64) *Point {
-	return &Point{*lon, *lat}
-}
-
 func (p polygon) centroid() Point {
 	x := 0.0
 	y := 0.0
@@ -22,11 +18,7 @@ func (p polygon) centroid() Point {
 }
 
 func (p polygon) isClosed() bool {
-	if len(p) < 3 {
-		return false
-	}
-
-	return true
+	return len(p) >= 3
 }
 
 // Returns whether or not the current Polygon contains the passed in Point.
