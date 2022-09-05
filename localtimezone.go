@@ -1,6 +1,6 @@
 // Package localtimezone provides timezone lookup for a given location
 //
-// Features
+// # Features
 //
 // * The timezone shapefile is embedded in the build binary using go-bindata
 //
@@ -10,7 +10,7 @@
 //
 // * Sub millisecond lookup even on old hardware
 //
-// Problems
+// # Problems
 //
 // * The shapefile is simplified using a lossy method so it may be innacurate along the borders
 //
@@ -132,7 +132,7 @@ func getNauticalZone(point *Point) (tzid []string, err error) {
 	return append(tzid, fmt.Sprintf("Etc/GMT-%.f", z)), nil
 }
 
-//BuildCenterCache builds centers for polygons
+// BuildCenterCache builds centers for polygons
 func buildCenterCache() {
 	centerCache = make(centers)
 	var tzid string

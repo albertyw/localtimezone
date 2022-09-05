@@ -13,7 +13,7 @@ type featureCollection struct {
 	Features []*Feature
 }
 
-//Feature ...
+// Feature ...
 type Feature struct {
 	feature
 }
@@ -25,7 +25,7 @@ type feature struct {
 	}
 }
 
-//Geometry ...
+// Geometry ...
 type Geometry struct {
 	geometry
 }
@@ -48,7 +48,7 @@ var jMultiPolygon struct {
 	Coordinates [][][][]float64
 }
 
-//UnmarshalJSON ...
+// UnmarshalJSON ...
 func (g *Geometry) UnmarshalJSON(data []byte) (err error) {
 	if err := json.Unmarshal(data, &jPolyType); err != nil {
 		return err
