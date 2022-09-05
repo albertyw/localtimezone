@@ -1,5 +1,6 @@
 SHELL := /bin/bash
 
+.PHONY:test
 test:
 	go test -race -coverprofile=coverage.txt -covermode=atomic ./...
 	go vet ./...
