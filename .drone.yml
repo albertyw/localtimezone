@@ -1,0 +1,9 @@
+kind: pipeline
+type: docker
+name: test
+
+steps:
+  - name: Test Go
+    image: golang:1.19
+    commands:
+      - make test
