@@ -7,3 +7,8 @@ steps:
     image: golang:1.19
     commands:
       - make test
+      - curl -Os https://uploader.codecov.io/latest/linux/codecov
+      - chmod +x codecov
+      - ./codecov
+    environment:
+      CODECOV_TOKEN: 478ec348-c903-47c3-bbe9-c96c4af8c6f7
