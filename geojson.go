@@ -1,4 +1,4 @@
-package tz
+package localtimezone
 
 import (
 	"encoding/json"

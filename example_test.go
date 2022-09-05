@@ -1,17 +1,17 @@
-package tz_test
+package localtimezone_test
 
 import (
 	"fmt"
 
-	"gopkg.in/ugjka/go-tz.v2/tz"
+	"github.com/albertyw/localtimezone"
 )
 
 func ExampleGetZone() {
 	// Loading Zone for Line Islands, Kiritimati
-	p := tz.Point{
+	p := localtimezone.Point{
 		Lon: -157.21328, Lat: 1.74294,
 	}
-	zone, err := tz.GetZone(p)
+	zone, err := localtimezone.GetZone(p)
 	if err != nil {
 		panic(err)
 	}

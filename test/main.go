@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 
-	"gopkg.in/ugjka/go-tz.v2/tz"
+	"github.com/albertyw/localtimezone"
 )
 
 func main() {
-	zone, err := tz.GetZone(tz.Point{
+	zone, err := localtimezone.GetZone(localtimezone.Point{
 		Lon: -157.21328, Lat: 1.74294,
 	})
 	if err != nil {
