@@ -3,7 +3,7 @@
 LatLong conversion to time zone
 
 [![Build Status](https://drone.albertyw.com/api/badges/albertyw/localtimezone/status.svg)](https://drone.albertyw.com/albertyw/localtimezone)
-[![GoDoc](https://godoc.org/github.com/albertyw/localtimezone?status.svg)](http://godoc.org/github.com/albertyw/localtimezone)
+[![GoDoc](https://godoc.org/github.com/albertyw/localtimezone?status.svg)](https://godoc.org/github.com/albertyw/localtimezone)
 [![Go Report Card](https://goreportcard.com/badge/github.com/albertyw/localtimezone)](https://goreportcard.com/report/github.com/albertyw/localtimezone)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -26,7 +26,7 @@ fmt.Println(zone[0])
 
 Uses simplified shapefile from [timezone-boundary-builder](https://github.com/evansiroky/timezone-boundary-builder/)
 
-GeoJson Simplification done with [mapshaper](http://mapshaper.org/)
+GeoJson Simplification done with [mapshaper](https://mapshaper.org/)
 
 ## Features
 
@@ -51,4 +51,4 @@ go run tzshapefilegen/main.go -release [2021c]
 
 The code used to lookup the timezone for a location is licensed under the [MIT License](https://opensource.org/licenses/MIT).
 
-The data in timezone shapefile is licensed under the [Open Data Commons Open Database License (ODbL)](http://opendatacommons.org/licenses/odbl/).
+The data in timezone shapefile is licensed under the [Open Data Commons Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/).
