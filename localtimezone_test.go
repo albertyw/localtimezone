@@ -56,6 +56,22 @@ var tt = []struct {
 			err:   nil,
 		},
 	},
+	{
+		"Asuncion",
+		Point{-57.637517, -25.335772},
+		result{
+			zones: []string{"America/Asuncion"},
+			err:   nil,
+		},
+	},
+	{
+		"Across the river from Asuncion",
+		Point{-57.681572, -25.351069},
+		result{
+			zones: []string{"America/Argentina/Cordoba"},
+			err:   nil,
+		},
+	},
 }
 
 func TestGetZone(t *testing.T) {
