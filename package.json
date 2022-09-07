@@ -1,0 +1,18 @@
+{
+  "name": "localtimezone",
+  "version": "1.0.0",
+  "description": "[![Build Status](https://drone.albertyw.com/api/badges/albertyw/localtimezone/status.svg)](https://drone.albertyw.com/albertyw/localtimezone)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/albertyw/localtimezone.git"
+  },
+  "author": "git@albertyw.com",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/albertyw/localtimezone/issues"
+  },
+  "homepage": "https://github.com/albertyw/localtimezone#readme",
+  "devDependencies": {
+    "mapshaper": "^0.6.7"
+  }
+}
