@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -16,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path"
 	"sync"
 	"time"
 
@@ -32,10 +34,19 @@ var %s = []byte("%s")
 `
 
 func main() {
-	_, err := exec.LookPath("mapshaper")
+	mapshaperPath, err := exec.LookPath("mapshaper")
+	if errors.Is(err, exec.ErrDot) {
+		err = nil
+	}
 	if err != nil {
 		log.Fatalln("Error: mapshaper executable not found in $PATH")
 	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Println(err)
+	}
+	mapshaperPath = path.Join(cwd, mapshaperPath)
+	fmt.Println(cwd)
 
 	release := flag.String("release", "2018g", "timezone boundary builder release version")
 	flag.Parse()
@@ -126,7 +137,11 @@ func main() {
 	geojsonFile.Close()
 
 	fmt.Println("*** RUNNING MAPSHAPER ***")
-	mapshaper := exec.Command("mapshaper", "-i", "combined.json", "-simplify", "visvalingam", "20%", "-o", "reduced.json")
+	mapshaper := exec.Command(mapshaperPath, "-i", "combined.json", "-simplify", "visvalingam", "20%", "-o", "reduced.json")
+	if errors.Is(mapshaper.Err, exec.ErrDot) {
+		mapshaper.Err = nil
+		fmt.Println("asdf")
+	}
 	mapshaper.Stdout = os.Stdout
 	mapshaper.Stderr = os.Stderr
 	err = mapshaper.Run()
