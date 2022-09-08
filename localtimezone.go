@@ -14,7 +14,7 @@
 //
 // * The shapefile is simplified using a lossy method so it may be innacurate along the borders
 //
-// * This is purerly in-memory. Uses ~50MB of ram
+// * This is purely in-memory. Uses ~50MB of ram
 package localtimezone
 
 import (
