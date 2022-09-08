@@ -1,13 +1,12 @@
 # github.com/albertyw/localtimezone
 
-LatLong conversion to time zone
-
 [![Build Status](https://drone.albertyw.com/api/badges/albertyw/localtimezone/status.svg)](https://drone.albertyw.com/albertyw/localtimezone)
 [![GoDoc](https://godoc.org/github.com/albertyw/localtimezone?status.svg)](https://godoc.org/github.com/albertyw/localtimezone)
 [![Go Report Card](https://goreportcard.com/badge/github.com/albertyw/localtimezone)](https://goreportcard.com/report/github.com/albertyw/localtimezone)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-lookup timezone for a given location
+LatLong conversion to time zone.
+This is a fork of [github.com/ugjka/go-tz](https://github.com/ugjka/go-tz).
 
 ## Usage / Example
 
