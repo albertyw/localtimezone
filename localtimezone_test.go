@@ -2,7 +2,6 @@ package localtimezone
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 )
 
@@ -97,8 +96,13 @@ func TestGetZone(t *testing.T) {
 			if err != tc.err {
 				t.Errorf("expected err %v; got %v", tc.err, err)
 			}
-			if !reflect.DeepEqual(tzid, tc.zones) {
-				t.Errorf("expected zones %v; got %v", tc.zones, tzid)
+			if len(tzid) != len(tc.zones) {
+				t.Errorf("expected %d zones; got %d", len(tc.zones), len(tzid))
+			}
+			for i, zone := range tc.zones {
+				if tzid[i] != zone {
+					t.Errorf("expected zone %s; got %s", zone, tzid[i])
+				}
 			}
 		})
 	}
