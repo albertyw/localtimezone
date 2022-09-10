@@ -1,75 +1,75 @@
 package localtimezone
 
 import (
+	"encoding/csv"
+	"os"
+	"strconv"
 	"testing"
 )
 
-var testcases = []struct {
-	name  string
-	point Point
-	zones []string
-}{
-	{
-		"Riga",
-		Point{24.105078, 56.946285},
-		[]string{"Europe/Riga"},
-	},
-	{
-		"Tokyo",
-		Point{139.7594549, 35.6828387},
-		[]string{"Asia/Tokyo"},
-	},
-	{
-		"Urumqi/Shanghai",
-		Point{87.319461, 43.419754},
-		[]string{"Asia/Shanghai", "Asia/Urumqi"},
-	},
-	{
-		"Tuvalu",
-		Point{178.1167698, -7.768959},
-		[]string{"Pacific/Funafuti"},
-	},
-	{
-		"Baker Island",
-		Point{-176.474331436, 0.190165906},
-		[]string{"Etc/GMT+12"},
-	},
-	{
-		"Asuncion",
-		Point{-57.637517, -25.335772},
-		[]string{"America/Asuncion"},
-	},
-	{
-		"Across the river from Asuncion",
-		Point{-57.681572, -25.351069},
-		[]string{"America/Argentina/Cordoba"},
-	},
-	{
-		"Singapore",
-		Point{103.811988, 1.466482},
-		[]string{"Asia/Singapore"},
-	},
-	{
-		"Across the river from Singapore",
-		Point{103.768481, 1.462410},
-		[]string{"Asia/Kuala_Lumpur"},
-	},
+// city and lat/lon data is from Pareto Software LLC, SimpleMaps.com
+// https://simplemaps.com/data/world-cities
+type TimezoneTestCase struct {
+	City         string
+	Lat          float64
+	Lon          float64
+	ExpectedZone string
+}
+
+func generateTestCases() ([]TimezoneTestCase, error) {
+	f, err := os.Open("test/testdata.csv")
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	reader := csv.NewReader(f)
+	rawData, err := reader.ReadAll()
+	if err != nil {
+		return nil, err
+	}
+
+	var data []TimezoneTestCase
+	for _, line := range rawData {
+		lat, err := strconv.ParseFloat(line[1], 64)
+		if err != nil {
+			return nil, err
+		}
+		lon, err := strconv.ParseFloat(line[2], 64)
+		if err != nil {
+			return nil, err
+		}
+		tc := TimezoneTestCase{
+			City:         line[0],
+			Lat:          lat,
+			Lon:          lon,
+			ExpectedZone: line[3],
+		}
+		data = append(data, tc)
+	}
+	return data, nil
 }
 
 func TestData(t *testing.T) {
-	for _, tc := range tt {
-		t.Run(tc.name, func(t *testing.T) {
-			tzid, err := GetZone(tc.point)
-			if err != tc.err {
-				t.Errorf("expected err %v; got %v", tc.err, err)
+	data, err := generateTestCases()
+	if err != nil {
+		t.Errorf("cannot get test data: %v", err)
+	}
+	for _, tc := range data {
+		t.Run(tc.City, func(t *testing.T) {
+			point := Point{
+				Lon: tc.Lon,
+				Lat: tc.Lat,
 			}
-			if len(tzid) != len(tc.zones) {
-				t.Errorf("expected %d zones; got %d", len(tc.zones), len(tzid))
+			tzid, err := GetZone(point)
+			if err != nil {
+				t.Errorf("unexpted err %v", err)
 			}
-			for i, zone := range tc.zones {
-				if tzid[i] != zone {
-					t.Errorf("expected zone %s; got %s", zone, tzid[i])
-				}
+			if len(tzid) < 1 {
+				t.Error("cannot find a timezone")
+			}
+			if tc.ExpectedZone != tzid[0] {
+				t.Errorf("expected zone %s; got %s", tc.ExpectedZone, tzid[0])
 			}
 		})
 	}
