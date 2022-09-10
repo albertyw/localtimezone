@@ -43,7 +43,7 @@ GeoJson Simplification done with [mapshaper](https://mapshaper.org/)
 Get the most current timezone release version at https://github.com/evansiroky/timezone-boundary-builder/tags
 
 ```bash
-go run tzshapefilegen/main.go -release [2021c]
+go run tzshapefilegen/main.go
 ```
 
 ## Licenses
