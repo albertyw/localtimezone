@@ -1,3 +1,3 @@
-//go:generate go run tzshapefilegen/main.go -release 2020d
+//go:generate go run tzshapefilegen/main.go -release 2021c
 
 package localtimezone

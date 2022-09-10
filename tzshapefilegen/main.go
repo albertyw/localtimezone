@@ -48,7 +48,7 @@ func main() {
 	mapshaperPath = path.Join(cwd, mapshaperPath)
 	fmt.Println(cwd)
 
-	release := flag.String("release", "2018g", "timezone boundary builder release version")
+	release := flag.String("release", "2021c", "timezone boundary builder release version")
 	flag.Parse()
 
 	resp, err := http.Get(fmt.Sprintf(dlURL, *release))
