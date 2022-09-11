@@ -19,7 +19,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"strings"
 	"sync"
 	"time"
 
@@ -47,30 +46,29 @@ func getMostCurrentRelease() (string, error) {
 		return "", err
 	}
 
-	var data []map[string]json.RawMessage
-	err = json.Unmarshal(body, &data)
-	if err != nil {
-		return "", err
+	type asset struct {
+		Name               string `json:"name"`
+		BrowserDownloadURL string `json:"browser_download_url"`
 	}
-
-	var assets []map[string]json.RawMessage
-	err = json.Unmarshal(data[0]["assets"], &assets)
+	type release struct {
+		Assets []asset `json:"assets"`
+	}
+	var response []release
+	err = json.Unmarshal(body, &response)
 	if err != nil {
 		return "", err
 	}
 
 	var url string
-	for _, asset := range assets {
-		fmt.Println(string(asset["name"]))
-		if string(asset["name"]) != "\"timezones.geojson.zip\"" {
+	for _, asset := range response[0].Assets {
+		if asset.Name != "timezones.geojson.zip" {
 			continue
 		}
-		url = string(asset["browser_download_url"])
+		url = asset.BrowserDownloadURL
 	}
 	if url == "" {
 		return "", fmt.Errorf("cannot find correct zip in latest timezone release")
 	}
-	url = strings.Trim(url, "\"")
 	return url, nil
 }
 
