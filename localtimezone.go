@@ -39,11 +39,10 @@ func load() {
 	}
 	defer g.Close()
 
-	if err := json.NewDecoder(g).Decode(&tzdata); err != nil {
+	err = LoadGeoJSON(g)
+	if err != nil {
 		panic(err)
 	}
-	buildCenterCache()
-	debug.FreeOSMemory()
 }
 
 var tzdata FeatureCollection
@@ -151,7 +150,6 @@ func LoadGeoJSON(r io.Reader) error {
 	tzdata = FeatureCollection{}
 	err := json.NewDecoder(r).Decode(&tzdata)
 	if err != nil {
-		load()
 		return err
 	}
 	buildCenterCache()
