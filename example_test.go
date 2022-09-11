@@ -6,12 +6,13 @@ import (
 	"github.com/albertyw/localtimezone"
 )
 
-func ExampleGetZone() {
+func ExampleLocalTimeZone_GetZone() {
+	z := localtimezone.NewLocalTimeZone()
 	// Loading Zone for Line Islands, Kiritimati
 	p := localtimezone.Point{
 		Lon: -157.21328, Lat: 1.74294,
 	}
-	zone, err := localtimezone.GetZone(p)
+	zone, err := z.GetZone(p)
 	if err != nil {
 		panic(err)
 	}

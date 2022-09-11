@@ -4,33 +4,21 @@ import (
 	"encoding/json"
 )
 
-// FeatureCollection ...
+// FeatureCollection is a set of Features
 type FeatureCollection struct {
-	featureCollection
-}
-
-type featureCollection struct {
 	Features []*Feature
 }
 
-// Feature ...
+// Feature maps a Geometry with TZids
 type Feature struct {
-	feature
-}
-
-type feature struct {
 	Geometry   Geometry
 	Properties struct {
 		Tzid string
 	}
 }
 
-// Geometry ...
+// Geometry represents a set of points that draw a geographic geometry
 type Geometry struct {
-	geometry
-}
-
-type geometry struct {
 	Coordinates   [][]Point
 	BoundingBoxes [][]Point
 }
@@ -48,7 +36,7 @@ var jMultiPolygon struct {
 	Coordinates [][][][]float64
 }
 
-// UnmarshalJSON ...
+// UnmarshalJSON parses json data into a geometry
 func (g *Geometry) UnmarshalJSON(data []byte) (err error) {
 	if err := json.Unmarshal(data, &jPolyType); err != nil {
 		return err

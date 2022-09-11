@@ -28,29 +28,11 @@ import (
 	"runtime/debug"
 )
 
-func init() {
-	load()
-}
+// ErrNoZoneFound is returned when a zone for the given point is not found in the shapefile
+var ErrNoZoneFound = errors.New("no corresponding zone found in shapefile")
 
-func load() {
-	g, err := gzip.NewReader(bytes.NewBuffer(tzShapeFile))
-	if err != nil {
-		panic(err)
-	}
-	defer g.Close()
-
-	if err := json.NewDecoder(g).Decode(&tzdata); err != nil {
-		panic(err)
-	}
-	buildCenterCache()
-	debug.FreeOSMemory()
-}
-
-var tzdata FeatureCollection
-
-type centers map[string][]Point
-
-var centerCache centers
+// ErrOutOfRange is returned when latitude exceeds 90 degrees or longitude exceeds 180 degrees
+var ErrOutOfRange = errors.New("point's coordinates out of range")
 
 // Point describes a location by Latitude and Longitude
 type Point struct {
@@ -58,19 +40,44 @@ type Point struct {
 	Lat float64
 }
 
-// ErrNoZoneFound is returned when a zone for the given point is not found in the shapefile
-var ErrNoZoneFound = errors.New("no corresponding zone found in shapefile")
+// LocalTimeZone is a client for looking up time zones by Points
+type LocalTimeZone interface {
+	GetZone(p Point) (tzid []string, err error)
+}
 
-// ErrOutOfRange is returned when latitude exceeds 90 degrees or longitude exceeds 180 degrees
-var ErrOutOfRange = errors.New("point's coordinates out of range")
+type centers map[string][]Point
+type localTimeZone struct {
+	tzdata      *FeatureCollection
+	centerCache *centers
+}
+
+// NewLocalTimeZone creates a new LocalTimeZone with real timezone data
+func NewLocalTimeZone() LocalTimeZone {
+	z := localTimeZone{}
+	z.load()
+	return &z
+}
+
+func (z *localTimeZone) load() {
+	g, err := gzip.NewReader(bytes.NewBuffer(tzShapeFile))
+	if err != nil {
+		panic(err)
+	}
+	defer g.Close()
+
+	err = z.LoadGeoJSON(g)
+	if err != nil {
+		panic(err)
+	}
+}
 
 // GetZone returns a slice of strings containing time zone id's for a given Point
-func GetZone(p Point) (tzid []string, err error) {
+func (z localTimeZone) GetZone(p Point) (tzid []string, err error) {
 	if p.Lon > 180 || p.Lon < -180 || p.Lat > 90 || p.Lat < -90 {
 		return nil, ErrOutOfRange
 	}
 	var id string
-	for _, v := range tzdata.Features {
+	for _, v := range z.tzdata.Features {
 		if v.Properties.Tzid == "" {
 			continue
 		}
@@ -90,21 +97,21 @@ func GetZone(p Point) (tzid []string, err error) {
 	if len(tzid) > 0 {
 		return tzid, nil
 	}
-	return getClosestZone(&p)
+	return z.getClosestZone(p)
 }
 
-func distanceFrom(p1, p2 *Point) float64 {
+func distanceFrom(p1, p2 Point) float64 {
 	d0 := (p1.Lon - p2.Lon)
 	d1 := (p1.Lat - p2.Lat)
 	return math.Sqrt(d0*d0 + d1*d1)
 }
 
-func getClosestZone(point *Point) (tzid []string, err error) {
+func (z localTimeZone) getClosestZone(point Point) (tzid []string, err error) {
 	mindist := math.Inf(1)
 	var winner string
-	for id, v := range centerCache {
+	for id, v := range *z.centerCache {
 		for _, p := range v {
-			tmp := distanceFrom(&p, point)
+			tmp := distanceFrom(p, point)
 			if tmp < mindist {
 				mindist = tmp
 				winner = id
@@ -118,7 +125,7 @@ func getClosestZone(point *Point) (tzid []string, err error) {
 	return append(tzid, winner), nil
 }
 
-func getNauticalZone(point *Point) (tzid []string, err error) {
+func getNauticalZone(point Point) (tzid []string, err error) {
 	z := point.Lon / 7.5
 	z = (math.Abs(z) + 1) / 2
 	z = math.Floor(z)
@@ -132,10 +139,10 @@ func getNauticalZone(point *Point) (tzid []string, err error) {
 }
 
 // BuildCenterCache builds centers for polygons
-func buildCenterCache() {
-	centerCache = make(centers)
+func (z *localTimeZone) buildCenterCache() {
+	centerCache := make(centers)
 	var tzid string
-	for _, v := range tzdata.Features {
+	for _, v := range z.tzdata.Features {
 		if v.Properties.Tzid == "" {
 			continue
 		}
@@ -144,17 +151,18 @@ func buildCenterCache() {
 			centerCache[tzid] = append(centerCache[tzid], polygon(poly).centroid())
 		}
 	}
+	z.centerCache = &centerCache
 }
 
 // LoadGeoJSON loads a custom GeoJSON shapefile from a Reader
-func LoadGeoJSON(r io.Reader) error {
-	tzdata = FeatureCollection{}
-	err := json.NewDecoder(r).Decode(&tzdata)
+func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
+	collection := FeatureCollection{}
+	z.tzdata = &collection
+	err := json.NewDecoder(r).Decode(&z.tzdata)
 	if err != nil {
-		load()
 		return err
 	}
-	buildCenterCache()
+	z.buildCenterCache()
 	debug.FreeOSMemory()
 	return nil
 }

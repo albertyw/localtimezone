@@ -51,6 +51,7 @@ func generateTestCases() ([]TimezoneTestCase, error) {
 }
 
 func TestData(t *testing.T) {
+	z := NewLocalTimeZone()
 	data, err := generateTestCases()
 	if err != nil {
 		t.Errorf("cannot get test data: %v", err)
@@ -61,7 +62,7 @@ func TestData(t *testing.T) {
 				Lon: tc.Lon,
 				Lat: tc.Lat,
 			}
-			tzid, err := GetZone(point)
+			tzid, err := z.GetZone(point)
 			if err != nil {
 				t.Errorf("unexpected err %v", err)
 			}

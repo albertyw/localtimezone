@@ -90,9 +90,10 @@ var tt = []struct {
 }
 
 func TestGetZone(t *testing.T) {
+	z := NewLocalTimeZone()
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			tzid, err := GetZone(tc.point)
+			tzid, err := z.GetZone(tc.point)
 			if err != tc.err {
 				t.Errorf("expected err %v; got %v", tc.err, err)
 			}
@@ -109,15 +110,16 @@ func TestGetZone(t *testing.T) {
 }
 
 func BenchmarkZones(b *testing.B) {
+	z := NewLocalTimeZone().(*localTimeZone)
 	b.Run("polygon centers", func(b *testing.B) {
 	Loop:
 		for n := 0; n < b.N; {
-			for _, v := range centerCache {
+			for _, v := range *z.centerCache {
 				for i := range v {
 					if n > b.N {
 						break Loop
 					}
-					_, err := GetZone(v[i])
+					_, err := z.GetZone(v[i])
 					if err != nil {
 						b.Errorf("point %v did not return a zone", v[i])
 					}
@@ -133,7 +135,7 @@ func BenchmarkZones(b *testing.B) {
 				if n > b.N {
 					break Loop
 				}
-				GetZone(tc.point)
+				z.GetZone(tc.point)
 				n++
 			}
 
@@ -160,7 +162,7 @@ func TestNautical(t *testing.T) {
 	}
 	for _, tc := range tt {
 		t.Run(fmt.Sprintf("%f %s", tc.lon, tc.zone), func(t *testing.T) {
-			z, _ := getNauticalZone(&Point{Lat: 0, Lon: tc.lon})
+			z, _ := getNauticalZone(Point{Lat: 0, Lon: tc.lon})
 			if z[0] != tc.zone {
 				t.Errorf("expected %s got %s", tc.zone, z[0])
 			}
@@ -169,6 +171,7 @@ func TestNautical(t *testing.T) {
 }
 
 func TestOutOfRange(t *testing.T) {
+	z := NewLocalTimeZone()
 	tt := []struct {
 		p   Point
 		err error
@@ -184,7 +187,7 @@ func TestOutOfRange(t *testing.T) {
 	}
 	for _, tc := range tt {
 		t.Run(fmt.Sprintf("%f %f", tc.p.Lon, tc.p.Lat), func(t *testing.T) {
-			_, err := GetZone(tc.p)
+			_, err := z.GetZone(tc.p)
 			if err != tc.err {
 				t.Errorf("expected error %v got %v", tc.err, err)
 			}
