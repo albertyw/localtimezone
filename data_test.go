@@ -63,7 +63,7 @@ func TestData(t *testing.T) {
 			}
 			tzid, err := GetZone(point)
 			if err != nil {
-				t.Errorf("unexpted err %v", err)
+				t.Errorf("unexpected err %v", err)
 			}
 			if len(tzid) < 1 {
 				t.Error("cannot find a timezone")
