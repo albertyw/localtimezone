@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,6 +34,45 @@ package localtimezone
 
 var %s = []byte("%s")
 `
+const defaultRelease = "default"
+
+func getMostCurrentRelease() (string, error) {
+	resp, err := http.Get("https://api.github.com/repos/evansiroky/timezone-boundary-builder/releases")
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var data []map[string]json.RawMessage
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return "", err
+	}
+
+	var assets []map[string]json.RawMessage
+	err = json.Unmarshal(data[0]["assets"], &assets)
+	if err != nil {
+		return "", err
+	}
+
+	var url string
+	for _, asset := range assets {
+		fmt.Println(string(asset["name"]))
+		if string(asset["name"]) != "\"timezones.geojson.zip\"" {
+			continue
+		}
+		url = string(asset["browser_download_url"])
+	}
+	if url == "" {
+		return "", fmt.Errorf("cannot find correct zip in latest timezone release")
+	}
+	url = strings.Trim(url, "\"")
+	return url, nil
+}
 
 func main() {
 	mapshaperPath, err := exec.LookPath("mapshaper")
@@ -48,10 +89,19 @@ func main() {
 	mapshaperPath = path.Join(cwd, mapshaperPath)
 	fmt.Println(cwd)
 
-	release := flag.String("release", "2021c", "timezone boundary builder release version")
+	release := flag.String("release", defaultRelease, "timezone boundary builder release version")
 	flag.Parse()
 
-	resp, err := http.Get(fmt.Sprintf(dlURL, *release))
+	var releaseURL string
+	if *release == defaultRelease {
+		releaseURL, err = getMostCurrentRelease()
+		if err != nil {
+			log.Fatalln(err)
+		}
+	} else {
+		releaseURL = fmt.Sprintf(dlURL, *release)
+	}
+	resp, err := http.Get(releaseURL)
 	if err != nil {
 		log.Fatalf("Error: could not download tz shapefile: %v\n", err)
 	}
@@ -84,6 +134,7 @@ func main() {
 	wg.Wait()
 	cancel()
 
+	fmt.Println(buffer.Len())
 	bufferReader := bytes.NewReader(buffer.Bytes())
 	zipReader, err := zip.NewReader(bufferReader, size)
 	if err != nil {
