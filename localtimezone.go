@@ -51,6 +51,7 @@ type localTimeZone struct {
 	centerCache *centers
 }
 
+// NewLocalTimeZone creates a new LocalTimeZone with real timezone data
 func NewLocalTimeZone() LocalTimeZone {
 	z := localTimeZone{}
 	z.load()
