@@ -114,7 +114,7 @@ func BenchmarkZones(b *testing.B) {
 	b.Run("polygon centers", func(b *testing.B) {
 	Loop:
 		for n := 0; n < b.N; {
-			for _, v := range z.centerCache {
+			for _, v := range *z.centerCache {
 				for i := range v {
 					if n > b.N {
 						break Loop

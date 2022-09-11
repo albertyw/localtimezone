@@ -47,8 +47,8 @@ type LocalTimeZone interface {
 
 type centers map[string][]Point
 type localTimeZone struct {
-	tzdata      FeatureCollection
-	centerCache centers
+	tzdata      *FeatureCollection
+	centerCache *centers
 }
 
 func NewLocalTimeZone() LocalTimeZone {
@@ -108,7 +108,7 @@ func distanceFrom(p1, p2 *Point) float64 {
 func (z *localTimeZone) getClosestZone(point *Point) (tzid []string, err error) {
 	mindist := math.Inf(1)
 	var winner string
-	for id, v := range z.centerCache {
+	for id, v := range *z.centerCache {
 		for _, p := range v {
 			tmp := distanceFrom(&p, point)
 			if tmp < mindist {
@@ -139,7 +139,7 @@ func getNauticalZone(point *Point) (tzid []string, err error) {
 
 // BuildCenterCache builds centers for polygons
 func (z *localTimeZone) buildCenterCache() {
-	z.centerCache = make(centers)
+	centerCache := make(centers)
 	var tzid string
 	for _, v := range z.tzdata.Features {
 		if v.Properties.Tzid == "" {
@@ -147,14 +147,16 @@ func (z *localTimeZone) buildCenterCache() {
 		}
 		tzid = v.Properties.Tzid
 		for _, poly := range v.Geometry.Coordinates {
-			z.centerCache[tzid] = append(z.centerCache[tzid], polygon(poly).centroid())
+			centerCache[tzid] = append(centerCache[tzid], polygon(poly).centroid())
 		}
 	}
+	z.centerCache = &centerCache
 }
 
 // LoadGeoJSON loads a custom GeoJSON shapefile from a Reader
 func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
-	z.tzdata = FeatureCollection{}
+	collection := FeatureCollection{}
+	z.tzdata = &collection
 	err := json.NewDecoder(r).Decode(&z.tzdata)
 	if err != nil {
 		return err
