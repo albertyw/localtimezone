@@ -110,7 +110,7 @@ func TestGetZone(t *testing.T) {
 }
 
 func BenchmarkZones(b *testing.B) {
-	z := NewLocalTimeZone().(localTimeZone)
+	z := NewLocalTimeZone().(*localTimeZone)
 	b.Run("polygon centers", func(b *testing.B) {
 	Loop:
 		for n := 0; n < b.N; {
