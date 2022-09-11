@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"runtime/debug"
 )
 
 // ErrNoZoneFound is returned when a zone for the given point is not found in the shapefile
@@ -163,6 +162,5 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 		return err
 	}
 	z.buildCenterCache()
-	debug.FreeOSMemory()
 	return nil
 }
