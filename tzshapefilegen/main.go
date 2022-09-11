@@ -85,7 +85,6 @@ func main() {
 		log.Println(err)
 	}
 	mapshaperPath = path.Join(cwd, mapshaperPath)
-	fmt.Println(cwd)
 
 	release := flag.String("release", defaultRelease, "timezone boundary builder release version")
 	flag.Parse()
@@ -114,7 +113,7 @@ func main() {
 	go func() {
 		defer wg.Done()
 		progressChan := progress.NewTicker(ctx, respBody, size, time.Second)
-		fmt.Println("Downloading timezone shape file", *release)
+		fmt.Println("Downloading timezone shape file", releaseURL)
 		for p := range progressChan {
 			fmt.Printf("\r%v  Remaining...", p.Remaining().Round(time.Second))
 		}
