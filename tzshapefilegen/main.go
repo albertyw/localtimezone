@@ -8,7 +8,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
-	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -19,10 +18,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"sync"
-	"time"
-
-	"github.com/machinebox/progress"
 )
 
 const dlURL = "https://github.com/evansiroky/timezone-boundary-builder/releases/download/%s/timezones.geojson.zip"
@@ -107,36 +102,15 @@ func main() {
 	}
 	defer resp.Body.Close()
 
-	respBody := progress.NewReader(resp.Body)
-	size := resp.ContentLength
-	wg := sync.WaitGroup{}
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		progressChan := progress.NewTicker(ctx, respBody, size, time.Second)
-		fmt.Println("Downloading timezone shape file", releaseURL)
-		for p := range progressChan {
-			fmt.Printf("\r%v  Remaining...", p.Remaining().Round(time.Second))
-		}
-		fmt.Println("")
-	}()
-
 	buffer := bytes.NewBuffer([]byte{})
-	_, err = io.Copy(buffer, respBody)
+	_, err = io.Copy(buffer, resp.Body)
 	if err != nil {
-		cancel()
-		wg.Wait()
 		log.Printf("Download failed: %v\n", err)
 		return
 	}
-	wg.Wait()
-	cancel()
 
-	fmt.Println(buffer.Len())
 	bufferReader := bytes.NewReader(buffer.Bytes())
-	zipReader, err := zip.NewReader(bufferReader, size)
+	zipReader, err := zip.NewReader(bufferReader, resp.ContentLength)
 	if err != nil {
 		log.Printf("Could not access zipfile: %v\n", err)
 		return
