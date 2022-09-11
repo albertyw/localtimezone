@@ -71,7 +71,7 @@ func (z *localTimeZone) load() {
 }
 
 // GetZone returns a slice of strings containing time zone id's for a given Point
-func (z *localTimeZone) GetZone(p Point) (tzid []string, err error) {
+func (z localTimeZone) GetZone(p Point) (tzid []string, err error) {
 	if p.Lon > 180 || p.Lon < -180 || p.Lat > 90 || p.Lat < -90 {
 		return nil, ErrOutOfRange
 	}
@@ -96,21 +96,21 @@ func (z *localTimeZone) GetZone(p Point) (tzid []string, err error) {
 	if len(tzid) > 0 {
 		return tzid, nil
 	}
-	return z.getClosestZone(&p)
+	return z.getClosestZone(p)
 }
 
-func distanceFrom(p1, p2 *Point) float64 {
+func distanceFrom(p1, p2 Point) float64 {
 	d0 := (p1.Lon - p2.Lon)
 	d1 := (p1.Lat - p2.Lat)
 	return math.Sqrt(d0*d0 + d1*d1)
 }
 
-func (z *localTimeZone) getClosestZone(point *Point) (tzid []string, err error) {
+func (z localTimeZone) getClosestZone(point Point) (tzid []string, err error) {
 	mindist := math.Inf(1)
 	var winner string
 	for id, v := range *z.centerCache {
 		for _, p := range v {
-			tmp := distanceFrom(&p, point)
+			tmp := distanceFrom(p, point)
 			if tmp < mindist {
 				mindist = tmp
 				winner = id
@@ -124,7 +124,7 @@ func (z *localTimeZone) getClosestZone(point *Point) (tzid []string, err error) 
 	return append(tzid, winner), nil
 }
 
-func getNauticalZone(point *Point) (tzid []string, err error) {
+func getNauticalZone(point Point) (tzid []string, err error) {
 	z := point.Lon / 7.5
 	z = (math.Abs(z) + 1) / 2
 	z = math.Floor(z)

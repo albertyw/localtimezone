@@ -162,7 +162,7 @@ func TestNautical(t *testing.T) {
 	}
 	for _, tc := range tt {
 		t.Run(fmt.Sprintf("%f %s", tc.lon, tc.zone), func(t *testing.T) {
-			z, _ := getNauticalZone(&Point{Lat: 0, Lon: tc.lon})
+			z, _ := getNauticalZone(Point{Lat: 0, Lon: tc.lon})
 			if z[0] != tc.zone {
 				t.Errorf("expected %s got %s", tc.zone, z[0])
 			}
