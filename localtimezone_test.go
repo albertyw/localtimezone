@@ -2,8 +2,24 @@ package localtimezone
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 )
+
+func TestParallelNewLocalTimeZone(t *testing.T) {
+	var wg sync.WaitGroup
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := NewLocalTimeZone()
+			if err != nil {
+				t.Errorf("error when initializing client: %v", err)
+			}
+		}()
+	}
+	wg.Wait()
+}
 
 type result struct {
 	zones []string
