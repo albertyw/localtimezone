@@ -7,6 +7,7 @@ import (
 )
 
 func TestParallelNewLocalTimeZone(t *testing.T) {
+	t.Parallel()
 	var wg sync.WaitGroup
 	for i := 0; i < 2; i++ {
 		wg.Add(1)
@@ -106,6 +107,7 @@ var tt = []struct {
 }
 
 func TestGetZone(t *testing.T) {
+	t.Parallel()
 	z, err := NewLocalTimeZone()
 	if err != nil {
 		t.Errorf("cannot initialize timezone client: %v", err)
@@ -169,6 +171,7 @@ func BenchmarkZones(b *testing.B) {
 }
 
 func TestNautical(t *testing.T) {
+	t.Parallel()
 	tt := []struct {
 		lon  float64
 		zone string
@@ -198,6 +201,7 @@ func TestNautical(t *testing.T) {
 }
 
 func TestOutOfRange(t *testing.T) {
+	t.Parallel()
 	z, err := NewLocalTimeZone()
 	if err != nil {
 		t.Errorf("cannot initialize timezone client: %v", err)
