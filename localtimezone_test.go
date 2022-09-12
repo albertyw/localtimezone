@@ -95,7 +95,9 @@ func TestGetZone(t *testing.T) {
 		t.Errorf("cannot initialize timezone client: %v", err)
 	}
 	for _, tc := range tt {
+		tc := tc // Remove race condition over test fields
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			tzid, err := z.GetZone(tc.point)
 			if err != tc.err {
 				t.Errorf("expected err %v; got %v", tc.err, err)
@@ -168,7 +170,9 @@ func TestNautical(t *testing.T) {
 		{-7.5, "Etc/GMT+1"},
 	}
 	for _, tc := range tt {
+		tc := tc // Remove race condition over test fields
 		t.Run(fmt.Sprintf("%f %s", tc.lon, tc.zone), func(t *testing.T) {
+			t.Parallel()
 			z, _ := getNauticalZone(Point{Lat: 0, Lon: tc.lon})
 			if z[0] != tc.zone {
 				t.Errorf("expected %s got %s", tc.zone, z[0])
@@ -196,7 +200,9 @@ func TestOutOfRange(t *testing.T) {
 		{Point{0, -91}, ErrOutOfRange},
 	}
 	for _, tc := range tt {
+		tc := tc // Remove race condition over test fields
 		t.Run(fmt.Sprintf("%f %f", tc.p.Lon, tc.p.Lat), func(t *testing.T) {
+			t.Parallel()
 			_, err := z.GetZone(tc.p)
 			if err != tc.err {
 				t.Errorf("expected error %v got %v", tc.err, err)
