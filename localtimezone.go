@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"sync"
 )
 
 // ErrNoZoneFound is returned when a zone for the given point is not found in the shapefile
@@ -48,9 +49,11 @@ type centers map[string][]Point
 type localTimeZone struct {
 	tzdata      *FeatureCollection
 	centerCache *centers
+	mu          sync.RWMutex
 }
 
 // NewLocalTimeZone creates a new LocalTimeZone with real timezone data
+// The client is threadsafe
 func NewLocalTimeZone() (LocalTimeZone, error) {
 	z := localTimeZone{}
 	err := z.load()
@@ -72,10 +75,12 @@ func (z *localTimeZone) load() error {
 }
 
 // GetZone returns a slice of strings containing time zone id's for a given Point
-func (z localTimeZone) GetZone(p Point) (tzid []string, err error) {
+func (z *localTimeZone) GetZone(p Point) (tzid []string, err error) {
 	if p.Lon > 180 || p.Lon < -180 || p.Lat > 90 || p.Lat < -90 {
 		return nil, ErrOutOfRange
 	}
+	z.mu.RLock()
+	defer z.mu.RUnlock()
 	var id string
 	for _, v := range z.tzdata.Features {
 		if v.Properties.Tzid == "" {
@@ -106,7 +111,7 @@ func distanceFrom(p1, p2 Point) float64 {
 	return math.Sqrt(d0*d0 + d1*d1)
 }
 
-func (z localTimeZone) getClosestZone(point Point) (tzid []string, err error) {
+func (z *localTimeZone) getClosestZone(point Point) (tzid []string, err error) {
 	mindist := math.Inf(1)
 	var winner string
 	for id, v := range *z.centerCache {
@@ -156,6 +161,8 @@ func (z *localTimeZone) buildCenterCache() {
 
 // LoadGeoJSON loads a custom GeoJSON shapefile from a Reader
 func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
+	z.mu.Lock()
+	defer z.mu.Unlock()
 	collection := FeatureCollection{}
 	z.tzdata = &collection
 	err := json.NewDecoder(r).Decode(&z.tzdata)

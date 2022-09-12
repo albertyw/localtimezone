@@ -2,8 +2,25 @@ package localtimezone
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 )
+
+func TestParallelNewLocalTimeZone(t *testing.T) {
+	t.Parallel()
+	var wg sync.WaitGroup
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := NewLocalTimeZone()
+			if err != nil {
+				t.Errorf("error when initializing client: %v", err)
+			}
+		}()
+	}
+	wg.Wait()
+}
 
 type result struct {
 	zones []string
@@ -90,12 +107,15 @@ var tt = []struct {
 }
 
 func TestGetZone(t *testing.T) {
+	t.Parallel()
 	z, err := NewLocalTimeZone()
 	if err != nil {
 		t.Errorf("cannot initialize timezone client: %v", err)
 	}
 	for _, tc := range tt {
+		tc := tc // Remove race condition over test fields
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			tzid, err := z.GetZone(tc.point)
 			if err != tc.err {
 				t.Errorf("expected err %v; got %v", tc.err, err)
@@ -151,6 +171,7 @@ func BenchmarkZones(b *testing.B) {
 }
 
 func TestNautical(t *testing.T) {
+	t.Parallel()
 	tt := []struct {
 		lon  float64
 		zone string
@@ -168,7 +189,9 @@ func TestNautical(t *testing.T) {
 		{-7.5, "Etc/GMT+1"},
 	}
 	for _, tc := range tt {
+		tc := tc // Remove race condition over test fields
 		t.Run(fmt.Sprintf("%f %s", tc.lon, tc.zone), func(t *testing.T) {
+			t.Parallel()
 			z, _ := getNauticalZone(Point{Lat: 0, Lon: tc.lon})
 			if z[0] != tc.zone {
 				t.Errorf("expected %s got %s", tc.zone, z[0])
@@ -178,6 +201,7 @@ func TestNautical(t *testing.T) {
 }
 
 func TestOutOfRange(t *testing.T) {
+	t.Parallel()
 	z, err := NewLocalTimeZone()
 	if err != nil {
 		t.Errorf("cannot initialize timezone client: %v", err)
@@ -196,7 +220,9 @@ func TestOutOfRange(t *testing.T) {
 		{Point{0, -91}, ErrOutOfRange},
 	}
 	for _, tc := range tt {
+		tc := tc // Remove race condition over test fields
 		t.Run(fmt.Sprintf("%f %f", tc.p.Lon, tc.p.Lat), func(t *testing.T) {
+			t.Parallel()
 			_, err := z.GetZone(tc.p)
 			if err != tc.err {
 				t.Errorf("expected error %v got %v", tc.err, err)
