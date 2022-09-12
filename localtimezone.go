@@ -51,23 +51,24 @@ type localTimeZone struct {
 }
 
 // NewLocalTimeZone creates a new LocalTimeZone with real timezone data
-func NewLocalTimeZone() LocalTimeZone {
+func NewLocalTimeZone() (LocalTimeZone, error) {
 	z := localTimeZone{}
-	z.load()
-	return &z
+	err := z.load()
+	return &z, err
 }
 
-func (z *localTimeZone) load() {
+func (z *localTimeZone) load() error {
 	g, err := gzip.NewReader(bytes.NewBuffer(tzShapeFile))
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer g.Close()
 
 	err = z.LoadGeoJSON(g)
 	if err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
 // GetZone returns a slice of strings containing time zone id's for a given Point

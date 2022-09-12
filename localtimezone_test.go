@@ -90,7 +90,10 @@ var tt = []struct {
 }
 
 func TestGetZone(t *testing.T) {
-	z := NewLocalTimeZone()
+	z, err := NewLocalTimeZone()
+	if err != nil {
+		t.Errorf("cannot initialize timezone client: %v", err)
+	}
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			tzid, err := z.GetZone(tc.point)
@@ -110,7 +113,11 @@ func TestGetZone(t *testing.T) {
 }
 
 func BenchmarkZones(b *testing.B) {
-	z := NewLocalTimeZone().(*localTimeZone)
+	zInterface, err := NewLocalTimeZone()
+	if err != nil {
+		b.Errorf("cannot initialize timezone client: %v", err)
+	}
+	z := zInterface.(*localTimeZone)
 	b.Run("polygon centers", func(b *testing.B) {
 	Loop:
 		for n := 0; n < b.N; {
@@ -171,7 +178,10 @@ func TestNautical(t *testing.T) {
 }
 
 func TestOutOfRange(t *testing.T) {
-	z := NewLocalTimeZone()
+	z, err := NewLocalTimeZone()
+	if err != nil {
+		t.Errorf("cannot initialize timezone client: %v", err)
+	}
 	tt := []struct {
 		p   Point
 		err error

@@ -7,7 +7,10 @@ import (
 )
 
 func main() {
-	z := localtimezone.NewLocalTimeZone()
+	z, err := localtimezone.NewLocalTimeZone()
+	if err != nil {
+		panic(err)
+	}
 	zone, err := z.GetZone(localtimezone.Point{
 		// Lon: -157.21328, Lat: 1.74294, // Pacific/Kiritimati
 		// Lon: -57.637517, Lat: -25.335772, // America/Asuncion

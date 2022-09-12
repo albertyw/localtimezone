@@ -14,7 +14,11 @@ This is a fork of [github.com/ugjka/go-tz](https://github.com/ugjka/go-tz).
 import "github.com/albertyw/localtimezone"
 
 // Loading Zone for Line Islands, Kiritimati
-zone, err := tz.GetZone(tz.Point{
+tz, err := localtimezone.NewLocalTimeZone()
+if err != nil {
+    panic(err)
+}
+zone, err := tz.GetZone(localtimezone.Point{
     Lon: -157.21328, Lat: 1.74294,
 })
 if err != nil {

@@ -51,7 +51,10 @@ func generateTestCases() ([]TimezoneTestCase, error) {
 }
 
 func TestData(t *testing.T) {
-	z := NewLocalTimeZone()
+	z, err := NewLocalTimeZone()
+	if err != nil {
+		t.Errorf("cannot initialize timezone client: %v", err)
+	}
 	data, err := generateTestCases()
 	if err != nil {
 		t.Errorf("cannot get test data: %v", err)
