@@ -23,26 +23,28 @@ type Geometry struct {
 	BoundingBoxes [][]Point
 }
 
-var jPolyType struct {
+type jPolyTypeType struct {
 	Type       string
 	Geometries []*Geometry
 }
 
-var jPolygon struct {
+type jPolygonType struct {
 	Coordinates [][][]float64
 }
 
-var jMultiPolygon struct {
+type jMultiPolygonType struct {
 	Coordinates [][][][]float64
 }
 
 // UnmarshalJSON parses json data into a geometry
 func (g *Geometry) UnmarshalJSON(data []byte) (err error) {
+	var jPolyType jPolyTypeType
 	if err := json.Unmarshal(data, &jPolyType); err != nil {
 		return err
 	}
 
 	if jPolyType.Type == "Polygon" {
+		var jPolygon jPolygonType
 		if err := json.Unmarshal(data, &jPolygon); err != nil {
 			return err
 		}
@@ -58,6 +60,7 @@ func (g *Geometry) UnmarshalJSON(data []byte) (err error) {
 	}
 
 	if jPolyType.Type == "MultiPolygon" {
+		var jMultiPolygon jMultiPolygonType
 		if err := json.Unmarshal(data, &jMultiPolygon); err != nil {
 			return err
 		}
