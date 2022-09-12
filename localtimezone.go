@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"sync"
 )
 
 // ErrNoZoneFound is returned when a zone for the given point is not found in the shapefile
@@ -49,6 +50,8 @@ type localTimeZone struct {
 	tzdata      *FeatureCollection
 	centerCache *centers
 }
+
+var mu sync.RWMutex
 
 // NewLocalTimeZone creates a new LocalTimeZone with real timezone data
 func NewLocalTimeZone() (LocalTimeZone, error) {
@@ -76,6 +79,8 @@ func (z localTimeZone) GetZone(p Point) (tzid []string, err error) {
 	if p.Lon > 180 || p.Lon < -180 || p.Lat > 90 || p.Lat < -90 {
 		return nil, ErrOutOfRange
 	}
+	mu.RLock()
+	defer mu.RUnlock()
 	var id string
 	for _, v := range z.tzdata.Features {
 		if v.Properties.Tzid == "" {
@@ -156,6 +161,8 @@ func (z *localTimeZone) buildCenterCache() {
 
 // LoadGeoJSON loads a custom GeoJSON shapefile from a Reader
 func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
+	mu.Lock()
+	defer mu.Unlock()
 	collection := FeatureCollection{}
 	z.tzdata = &collection
 	err := json.NewDecoder(r).Decode(&z.tzdata)
