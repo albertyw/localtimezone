@@ -1,6 +1,15 @@
 CHANGELOG
 =========
 
+v2.0.0
+------
+
+ - Refactor library to be based around a client rather than exported functions
+ - Add the ability to update tzdata to the latest version without having to pass flags
+ - Add timezone tests for all cities with >1M population
+ - Optimizations
+
+
 v1.0.0
 ------
  - Initial release of mostly https://github.com/ugjka/go-tz
