@@ -162,13 +162,15 @@ func (z *localTimeZone) buildCenterCache() {
 // LoadGeoJSON loads a custom GeoJSON shapefile from a Reader
 func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	z.mu.Lock()
-	defer z.mu.Unlock()
 	collection := FeatureCollection{}
 	z.tzdata = &collection
 	err := json.NewDecoder(r).Decode(&z.tzdata)
 	if err != nil {
 		return err
 	}
-	z.buildCenterCache()
+	go func() {
+		defer z.mu.Unlock()
+		z.buildCenterCache()
+	}()
 	return nil
 }
