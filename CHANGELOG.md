@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+v2.0.1
+------
+
+ - Defer loading logic on startup
+ - Use a faster json library
+
+
 v2.0.0
 ------
 
