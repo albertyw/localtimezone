@@ -8,6 +8,8 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"encoding/gob"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -18,7 +20,7 @@ import (
 	"os/exec"
 	"path"
 
-	"github.com/goccy/go-json"
+	"github.com/albertyw/localtimezone"
 )
 
 const dlURL = "https://github.com/evansiroky/timezone-boundary-builder/releases/download/%s/timezones.geojson.zip"
@@ -186,6 +188,18 @@ func main() {
 	}
 	defer reducedFile.Close()
 
+	var tzdata localtimezone.FeatureCollection
+	err = json.NewDecoder(reducedFile).Decode(&tzdata)
+	if err != nil {
+		log.Printf("Error: could not json decode mapper output: %v\n", err)
+	}
+	gobBuffer := bytes.NewBuffer([]byte{})
+	encoder := gob.NewEncoder(gobBuffer)
+	err = encoder.Encode(tzdata)
+	if err != nil {
+		log.Printf("Error: could not gob encode data: %v\n", err)
+	}
+
 	buffer = bytes.NewBuffer([]byte{})
 	gzipper, err := gzip.NewWriterLevel(buffer, gzip.BestCompression)
 	if err != nil {
@@ -193,7 +207,7 @@ func main() {
 		return
 	}
 
-	_, err = io.Copy(gzipper, reducedFile)
+	_, err = io.Copy(gzipper, gobBuffer)
 	if err != nil {
 		log.Printf("Error: could not copy data: %v\n", err)
 		return
