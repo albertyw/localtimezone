@@ -1,8 +1,7 @@
 package localtimezone
 
 import (
-	"bytes"
-	"encoding/gob"
+	"github.com/goccy/go-json"
 )
 
 // FeatureCollection is a set of Features
@@ -40,15 +39,13 @@ type jMultiPolygonType struct {
 // UnmarshalJSON parses json data into a geometry
 func (g *Geometry) UnmarshalJSON(data []byte) (err error) {
 	var jPolyType jPolyTypeType
-	buffer := bytes.NewBuffer(data)
-	decoder := gob.NewDecoder(buffer)
-	if err := decoder.Decode(&jPolyType); err != nil {
+	if err := json.Unmarshal(data, &jPolyType); err != nil {
 		return err
 	}
 
 	if jPolyType.Type == "Polygon" {
 		var jPolygon jPolygonType
-		if err := decoder.Decode(&jPolygon); err != nil {
+		if err := json.Unmarshal(data, &jPolygon); err != nil {
 			return err
 		}
 		pol := make([]Point, len(jPolygon.Coordinates[0]))
@@ -64,7 +61,7 @@ func (g *Geometry) UnmarshalJSON(data []byte) (err error) {
 
 	if jPolyType.Type == "MultiPolygon" {
 		var jMultiPolygon jMultiPolygonType
-		if err := decoder.Decode(&jMultiPolygon); err != nil {
+		if err := json.Unmarshal(data, &jMultiPolygon); err != nil {
 			return err
 		}
 		g.BoundingBoxes = make([][]Point, len(jMultiPolygon.Coordinates))

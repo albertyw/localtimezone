@@ -20,12 +20,13 @@ package localtimezone
 import (
 	"bytes"
 	"compress/gzip"
-	"encoding/gob"
 	"errors"
 	"fmt"
 	"io"
 	"math"
 	"sync"
+
+	"github.com/goccy/go-json"
 )
 
 // ErrNoZoneFound is returned when a zone for the given point is not found in the shapefile
@@ -164,7 +165,7 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	z.mu.Lock()
 	collection := FeatureCollection{}
 	z.tzdata = &collection
-	err := gob.NewDecoder(r).Decode(&z.tzdata)
+	err := json.NewDecoder(r).Decode(&z.tzdata)
 	if err != nil {
 		return err
 	}
