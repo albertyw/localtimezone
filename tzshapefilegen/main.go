@@ -8,7 +8,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -18,6 +17,8 @@ import (
 	"os"
 	"os/exec"
 	"path"
+
+	"github.com/goccy/go-json"
 )
 
 const dlURL = "https://github.com/evansiroky/timezone-boundary-builder/releases/download/%s/timezones.geojson.zip"

@@ -1,7 +1,7 @@
 package localtimezone
 
 import (
-	"encoding/json"
+	"github.com/goccy/go-json"
 )
 
 // FeatureCollection is a set of Features

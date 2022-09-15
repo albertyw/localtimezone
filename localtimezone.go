@@ -20,12 +20,13 @@ package localtimezone
 import (
 	"bytes"
 	"compress/gzip"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"math"
 	"sync"
+
+	"github.com/goccy/go-json"
 )
 
 // ErrNoZoneFound is returned when a zone for the given point is not found in the shapefile
