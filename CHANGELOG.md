@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+v2.0.2
+------
+
+ - Fix go.mod and imports to use v2
+
+
 v2.0.1
 ------
 
