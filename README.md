@@ -11,7 +11,7 @@ This is a fork of [github.com/ugjka/go-tz](https://github.com/ugjka/go-tz).
 ## Usage / Example
 
 ```go
-import "github.com/albertyw/localtimezone"
+import localtimezone "github.com/albertyw/localtimezone/v2"
 
 // Loading Zone for Line Islands, Kiritimati
 tz, err := localtimezone.NewLocalTimeZone()

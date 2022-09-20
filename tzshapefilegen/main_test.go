@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/albertyw/localtimezone"
+	"github.com/albertyw/localtimezone/v2"
 )
 
 func TestGetMostCurrentRelease(t *testing.T) {

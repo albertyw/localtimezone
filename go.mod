@@ -1,4 +1,4 @@
-module github.com/albertyw/localtimezone
+module github.com/albertyw/localtimezone/v2
 
 go 1.19
 
