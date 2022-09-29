@@ -26,6 +26,7 @@ import (
 	"math"
 	"sync"
 
+	"github.com/albertyw/localtimezone/v2/data"
 	"github.com/goccy/go-json"
 )
 
@@ -62,7 +63,7 @@ func NewLocalTimeZone() (LocalTimeZone, error) {
 }
 
 func (z *localTimeZone) load() error {
-	g, err := gzip.NewReader(bytes.NewBuffer(tzShapeFile))
+	g, err := gzip.NewReader(bytes.NewBuffer(data.TZShapeFile))
 	if err != nil {
 		return err
 	}
