@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/albertyw/localtimezone/v2/data"
+	"github.com/albertyw/localtimezone/v2"
 )
 
 func TestGetMostCurrentRelease(t *testing.T) {
@@ -14,7 +14,7 @@ func TestGetMostCurrentRelease(t *testing.T) {
 	if url == "" {
 		t.Errorf("cannot get most current timezone url")
 	}
-	if version != data.TZBoundaryVersion {
+	if version != localtimezone.TZBoundaryVersion {
 		t.Errorf("timezone boundary is out of date")
 	}
 }
