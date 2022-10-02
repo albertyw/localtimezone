@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+v2.0.3
+------
+
+ - Fix godocs
+ - Refactor tzshapefilegen
+
+
 v2.0.2
 ------
 
