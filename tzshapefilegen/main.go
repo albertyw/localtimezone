@@ -75,6 +75,99 @@ func getMostCurrentRelease() (version string, url string, err error) {
 	return version, url, nil
 }
 
+func mapshaperExec(mapshaperPath string) error {
+	mapshaper := exec.Command(mapshaperPath, "-i", "combined.json", "-simplify", "visvalingam", "20%", "-o", "reduced.json")
+	if errors.Is(mapshaper.Err, exec.ErrDot) {
+		mapshaper.Err = nil
+	}
+	mapshaper.Stdout = os.Stdout
+	mapshaper.Stderr = os.Stderr
+	err := mapshaper.Run()
+	if err != nil {
+		log.Printf("Error: could not run mapshaper: %v\n", err)
+		return err
+	}
+	return nil
+}
+
+func generateData() (string, error) {
+	reducedFile, err := os.Open("reduced.json")
+	if err != nil {
+		log.Printf("Error: could not open file: %v\n", err)
+		return "", err
+	}
+	defer reducedFile.Close()
+
+	buffer := bytes.NewBuffer([]byte{})
+	gzipper, err := gzip.NewWriterLevel(buffer, gzip.BestCompression)
+	if err != nil {
+		log.Printf("Error: could not create gzip writer: %v\n", err)
+		return "", err
+	}
+
+	_, err = io.Copy(gzipper, reducedFile)
+	if err != nil {
+		log.Printf("Error: could not copy data: %v\n", err)
+		return "", err
+	}
+	if err := gzipper.Close(); err != nil {
+		log.Printf("Error: could not flush/close gzip: %v\n", err)
+		return "", err
+	}
+
+	hexEncoded := bytes.NewBuffer([]byte{})
+	for _, v := range buffer.Bytes() {
+		hexEncoded.WriteString("\\x" + fmt.Sprintf("%02X", v))
+	}
+	content := fmt.Sprintf(dataTemplate, hexEncoded)
+	return content, nil
+}
+
+func writeData(content string, dir string) error {
+	err := os.Chdir(dir)
+	if err != nil {
+		log.Printf("Error: could not switch to previous dir: %v", err)
+		return err
+	}
+
+	outfile, err := os.Create("data/tzshapefile.go")
+	if err != nil {
+		log.Printf("Error: could not create tzshapefile.go: %v", err)
+		return err
+	}
+	defer outfile.Close()
+
+	_, err = outfile.WriteString(content)
+	if err != nil {
+		log.Printf("Error: could not write content: %v", err)
+		return err
+	}
+	return nil
+}
+
+func writeVersion(release string, dir string) error {
+	content := fmt.Sprintf(versionTemplate, release)
+	err := os.Chdir(dir)
+	if err != nil {
+		log.Printf("Error: could not switch to previous dir: %v", err)
+		return err
+	}
+
+	outfile, err := os.Create("version.go")
+	if err != nil {
+		log.Printf("Error: could not create version.go: %v", err)
+		return err
+	}
+	defer outfile.Close()
+
+	_, err = outfile.WriteString(content)
+	if err != nil {
+		log.Printf("Error: could not write content: %v", err)
+		return err
+	}
+	return nil
+}
+
 func main() {
 	mapshaperPath, err := exec.LookPath("mapshaper")
 	if errors.Is(err, exec.ErrDot) {
@@ -167,87 +260,22 @@ func main() {
 	geojsonFile.Close()
 
 	fmt.Println("*** RUNNING MAPSHAPER ***")
-	mapshaper := exec.Command(mapshaperPath, "-i", "combined.json", "-simplify", "visvalingam", "20%", "-o", "reduced.json")
-	if errors.Is(mapshaper.Err, exec.ErrDot) {
-		mapshaper.Err = nil
-		fmt.Println("asdf")
-	}
-	mapshaper.Stdout = os.Stdout
-	mapshaper.Stderr = os.Stderr
-	err = mapshaper.Run()
-	if err != nil {
-		log.Printf("Error: could not run mapshaper: %v\n", err)
-		return
-	}
+	mapshaperExec(mapshaperPath)
 	fmt.Println("*** MAPSHAPER FINISHED ***")
 
 	fmt.Println("*** GENERATING GO CODE ***")
-	reducedFile, err := os.Open("reduced.json")
+	content, err := generateData()
 	if err != nil {
-		log.Printf("Error: could not open file: %v\n", err)
-		return
-	}
-	defer reducedFile.Close()
-
-	buffer = bytes.NewBuffer([]byte{})
-	gzipper, err := gzip.NewWriterLevel(buffer, gzip.BestCompression)
-	if err != nil {
-		log.Printf("Error: could not create gzip writer: %v\n", err)
 		return
 	}
 
-	_, err = io.Copy(gzipper, reducedFile)
+	err = writeData(content, currDir)
 	if err != nil {
-		log.Printf("Error: could not copy data: %v\n", err)
-		return
-	}
-	if err := gzipper.Close(); err != nil {
-		log.Printf("Error: could not flush/close gzip: %v\n", err)
 		return
 	}
 
-	hexEncoded := bytes.NewBuffer([]byte{})
-	for _, v := range buffer.Bytes() {
-		hexEncoded.WriteString("\\x" + fmt.Sprintf("%02X", v))
-	}
-	content := fmt.Sprintf(dataTemplate, hexEncoded)
-
-	err = os.Chdir(currDir)
+	err = writeVersion(*release, currDir)
 	if err != nil {
-		log.Printf("Error: could not switch to previous dir: %v", err)
-		return
-	}
-
-	outfile, err := os.Create("data/tzshapefile.go")
-	if err != nil {
-		log.Printf("Error: could not create tzshapefile.go: %v", err)
-		return
-	}
-	defer outfile.Close()
-
-	_, err = outfile.WriteString(content)
-	if err != nil {
-		log.Printf("Error: could not write content: %v", err)
-		return
-	}
-
-	content = fmt.Sprintf(versionTemplate, *release)
-	err = os.Chdir(currDir)
-	if err != nil {
-		log.Printf("Error: could not switch to previous dir: %v", err)
-		return
-	}
-
-	outfile, err = os.Create("version.go")
-	if err != nil {
-		log.Printf("Error: could not create version.go: %v", err)
-		return
-	}
-	defer outfile.Close()
-
-	_, err = outfile.WriteString(content)
-	if err != nil {
-		log.Printf("Error: could not write content: %v", err)
 		return
 	}
 
