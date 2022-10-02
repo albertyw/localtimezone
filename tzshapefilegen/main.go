@@ -75,6 +75,28 @@ func getMostCurrentRelease() (version string, url string, err error) {
 	return version, url, nil
 }
 
+func writeData(content string, dir string) error {
+	err := os.Chdir(dir)
+	if err != nil {
+		log.Printf("Error: could not switch to previous dir: %v", err)
+		return err
+	}
+
+	outfile, err := os.Create("data/tzshapefile.go")
+	if err != nil {
+		log.Printf("Error: could not create tzshapefile.go: %v", err)
+		return err
+	}
+	defer outfile.Close()
+
+	_, err = outfile.WriteString(content)
+	if err != nil {
+		log.Printf("Error: could not write content: %v", err)
+		return err
+	}
+	return nil
+}
+
 func writeVersion(release string, dir string) error {
 	content := fmt.Sprintf(versionTemplate, release)
 	err := os.Chdir(dir)
@@ -235,22 +257,8 @@ func main() {
 	}
 	content := fmt.Sprintf(dataTemplate, hexEncoded)
 
-	err = os.Chdir(currDir)
+	err = writeData(content, currDir)
 	if err != nil {
-		log.Printf("Error: could not switch to previous dir: %v", err)
-		return
-	}
-
-	outfile, err := os.Create("data/tzshapefile.go")
-	if err != nil {
-		log.Printf("Error: could not create tzshapefile.go: %v", err)
-		return
-	}
-	defer outfile.Close()
-
-	_, err = outfile.WriteString(content)
-	if err != nil {
-		log.Printf("Error: could not write content: %v", err)
 		return
 	}
 
