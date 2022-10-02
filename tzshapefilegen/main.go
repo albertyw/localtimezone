@@ -79,7 +79,6 @@ func mapshaperExec(mapshaperPath string) error {
 	mapshaper := exec.Command(mapshaperPath, "-i", "combined.json", "-simplify", "visvalingam", "20%", "-o", "reduced.json")
 	if errors.Is(mapshaper.Err, exec.ErrDot) {
 		mapshaper.Err = nil
-		fmt.Println("asdf")
 	}
 	mapshaper.Stdout = os.Stdout
 	mapshaper.Stderr = os.Stderr
