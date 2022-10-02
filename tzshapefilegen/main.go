@@ -75,6 +75,22 @@ func getMostCurrentRelease() (version string, url string, err error) {
 	return version, url, nil
 }
 
+func mapshaperExec(mapshaperPath string) error {
+	mapshaper := exec.Command(mapshaperPath, "-i", "combined.json", "-simplify", "visvalingam", "20%", "-o", "reduced.json")
+	if errors.Is(mapshaper.Err, exec.ErrDot) {
+		mapshaper.Err = nil
+		fmt.Println("asdf")
+	}
+	mapshaper.Stdout = os.Stdout
+	mapshaper.Stderr = os.Stderr
+	err := mapshaper.Run()
+	if err != nil {
+		log.Printf("Error: could not run mapshaper: %v\n", err)
+		return err
+	}
+	return nil
+}
+
 func generateData() (string, error) {
 	reducedFile, err := os.Open("reduced.json")
 	if err != nil {
@@ -245,18 +261,7 @@ func main() {
 	geojsonFile.Close()
 
 	fmt.Println("*** RUNNING MAPSHAPER ***")
-	mapshaper := exec.Command(mapshaperPath, "-i", "combined.json", "-simplify", "visvalingam", "20%", "-o", "reduced.json")
-	if errors.Is(mapshaper.Err, exec.ErrDot) {
-		mapshaper.Err = nil
-		fmt.Println("asdf")
-	}
-	mapshaper.Stdout = os.Stdout
-	mapshaper.Stderr = os.Stderr
-	err = mapshaper.Run()
-	if err != nil {
-		log.Printf("Error: could not run mapshaper: %v\n", err)
-		return
-	}
+	mapshaperExec(mapshaperPath)
 	fmt.Println("*** MAPSHAPER FINISHED ***")
 
 	fmt.Println("*** GENERATING GO CODE ***")
