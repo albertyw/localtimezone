@@ -75,6 +75,39 @@ func getMostCurrentRelease() (version string, url string, err error) {
 	return version, url, nil
 }
 
+func generateData() (string, error) {
+	reducedFile, err := os.Open("reduced.json")
+	if err != nil {
+		log.Printf("Error: could not open file: %v\n", err)
+		return "", err
+	}
+	defer reducedFile.Close()
+
+	buffer := bytes.NewBuffer([]byte{})
+	gzipper, err := gzip.NewWriterLevel(buffer, gzip.BestCompression)
+	if err != nil {
+		log.Printf("Error: could not create gzip writer: %v\n", err)
+		return "", err
+	}
+
+	_, err = io.Copy(gzipper, reducedFile)
+	if err != nil {
+		log.Printf("Error: could not copy data: %v\n", err)
+		return "", err
+	}
+	if err := gzipper.Close(); err != nil {
+		log.Printf("Error: could not flush/close gzip: %v\n", err)
+		return "", err
+	}
+
+	hexEncoded := bytes.NewBuffer([]byte{})
+	for _, v := range buffer.Bytes() {
+		hexEncoded.WriteString("\\x" + fmt.Sprintf("%02X", v))
+	}
+	content := fmt.Sprintf(dataTemplate, hexEncoded)
+	return content, nil
+}
+
 func writeData(content string, dir string) error {
 	err := os.Chdir(dir)
 	if err != nil {
@@ -227,35 +260,10 @@ func main() {
 	fmt.Println("*** MAPSHAPER FINISHED ***")
 
 	fmt.Println("*** GENERATING GO CODE ***")
-	reducedFile, err := os.Open("reduced.json")
+	content, err := generateData()
 	if err != nil {
-		log.Printf("Error: could not open file: %v\n", err)
 		return
 	}
-	defer reducedFile.Close()
-
-	buffer = bytes.NewBuffer([]byte{})
-	gzipper, err := gzip.NewWriterLevel(buffer, gzip.BestCompression)
-	if err != nil {
-		log.Printf("Error: could not create gzip writer: %v\n", err)
-		return
-	}
-
-	_, err = io.Copy(gzipper, reducedFile)
-	if err != nil {
-		log.Printf("Error: could not copy data: %v\n", err)
-		return
-	}
-	if err := gzipper.Close(); err != nil {
-		log.Printf("Error: could not flush/close gzip: %v\n", err)
-		return
-	}
-
-	hexEncoded := bytes.NewBuffer([]byte{})
-	for _, v := range buffer.Bytes() {
-		hexEncoded.WriteString("\\x" + fmt.Sprintf("%02X", v))
-	}
-	content := fmt.Sprintf(dataTemplate, hexEncoded)
 
 	err = writeData(content, currDir)
 	if err != nil {
