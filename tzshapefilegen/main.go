@@ -75,6 +75,29 @@ func getMostCurrentRelease() (version string, url string, err error) {
 	return version, url, nil
 }
 
+func writeVersion(release string, dir string) error {
+	content := fmt.Sprintf(versionTemplate, release)
+	err := os.Chdir(dir)
+	if err != nil {
+		log.Printf("Error: could not switch to previous dir: %v", err)
+		return err
+	}
+
+	outfile, err := os.Create("version.go")
+	if err != nil {
+		log.Printf("Error: could not create version.go: %v", err)
+		return err
+	}
+	defer outfile.Close()
+
+	_, err = outfile.WriteString(content)
+	if err != nil {
+		log.Printf("Error: could not write content: %v", err)
+		return err
+	}
+	return nil
+}
+
 func main() {
 	mapshaperPath, err := exec.LookPath("mapshaper")
 	if errors.Is(err, exec.ErrDot) {
@@ -231,23 +254,8 @@ func main() {
 		return
 	}
 
-	content = fmt.Sprintf(versionTemplate, *release)
-	err = os.Chdir(currDir)
+	err = writeVersion(*release, currDir)
 	if err != nil {
-		log.Printf("Error: could not switch to previous dir: %v", err)
-		return
-	}
-
-	outfile, err = os.Create("version.go")
-	if err != nil {
-		log.Printf("Error: could not create version.go: %v", err)
-		return
-	}
-	defer outfile.Close()
-
-	_, err = outfile.WriteString(content)
-	if err != nil {
-		log.Printf("Error: could not write content: %v", err)
 		return
 	}
 
