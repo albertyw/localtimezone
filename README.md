@@ -2,7 +2,7 @@
 
 [![Build Status](https://drone.albertyw.com/api/badges/albertyw/localtimezone/status.svg)](https://drone.albertyw.com/albertyw/localtimezone)
 [![Go Documentation](https://godocs.io/github.com/albertyw/localtimezone/v2?status.svg)](https://godocs.io/github.com/albertyw/localtimezone/v2)
-[![Go Report Card](https://goreportcard.com/badge/github.com/albertyw/localtimezone)](https://goreportcard.com/report/github.com/albertyw/localtimezone)
+[![Go Report Card](https://goreportcard.com/badge/github.com/albertyw/localtimezone/v2)](https://goreportcard.com/report/github.com/albertyw/localtimezone/v2)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 LatLong conversion to time zone.
