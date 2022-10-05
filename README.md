@@ -1,7 +1,7 @@
 # github.com/albertyw/localtimezone
 
 [![Build Status](https://drone.albertyw.com/api/badges/albertyw/localtimezone/status.svg)](https://drone.albertyw.com/albertyw/localtimezone)
-[![Go Reference](https://pkg.go.dev/badge/github.com/albertyw/localtimezone/v2.svg)](https://pkg.go.dev/github.com/albertyw/localtimezone/v2)
+[![Go Documentation](https://godocs.io/github.com/albertyw/localtimezone/v2?status.svg)](https://godocs.io/github.com/albertyw/localtimezone/v2)
 [![Go Report Card](https://goreportcard.com/badge/github.com/albertyw/localtimezone)](https://goreportcard.com/report/github.com/albertyw/localtimezone)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
