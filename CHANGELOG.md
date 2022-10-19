@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+v2.0.4
+------
+
+ - Move shape file into an embedded gzip
+ - Update readme
+ - Update dependencies
+
+
 v2.0.3
 ------
 
