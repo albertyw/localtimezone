@@ -90,10 +90,10 @@ func mapshaperExec(mapshaperPath string) error {
 	return nil
 }
 
-func generateData() (string, error) {
+func generateData(dir string) (string, error) {
 	reducedFile, err := os.Open("reduced.json")
 	if err != nil {
-		log.Printf("Error: could not open file: %v\n", err)
+		log.Printf("Error: could not open file to read: %v\n", err)
 		return "", err
 	}
 	defer reducedFile.Close()
@@ -112,6 +112,18 @@ func generateData() (string, error) {
 	}
 	if err := gzipper.Close(); err != nil {
 		log.Printf("Error: could not flush/close gzip: %v\n", err)
+		return "", err
+	}
+
+	os.Chdir(dir)
+	gzipFile, err := os.OpenFile("data.json.gz", os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Printf("Error: could not open file to write: %v\n", err)
+		return "", err
+	}
+	_, err = gzipFile.Write(buffer.Bytes())
+	if err != nil {
+		log.Printf("Error: could not write data to file: %v\n", err)
 		return "", err
 	}
 
@@ -264,7 +276,7 @@ func main() {
 	fmt.Println("*** MAPSHAPER FINISHED ***")
 
 	fmt.Println("*** GENERATING GO CODE ***")
-	content, err := generateData()
+	content, err := generateData(currDir)
 	if err != nil {
 		return
 	}
