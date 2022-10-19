@@ -20,15 +20,21 @@ package localtimezone
 import (
 	"bytes"
 	"compress/gzip"
+	_ "embed"
 	"errors"
 	"fmt"
 	"io"
 	"math"
 	"sync"
 
-	"github.com/albertyw/localtimezone/v2/data"
 	"github.com/goccy/go-json"
 )
+
+// TZShapeFile is the data containing geographic shapes for timezone borders.
+// This data is a large json blob compressed with gzip.
+//
+//go:embed data.json.gz
+var TZShapeFile []byte
 
 // ErrNoZoneFound is returned when a zone for the given point is not found in the shapefile
 var ErrNoZoneFound = errors.New("no corresponding zone found in shapefile")
@@ -63,7 +69,7 @@ func NewLocalTimeZone() (LocalTimeZone, error) {
 }
 
 func (z *localTimeZone) load() error {
-	g, err := gzip.NewReader(bytes.NewBuffer(data.TZShapeFile))
+	g, err := gzip.NewReader(bytes.NewBuffer(TZShapeFile))
 	if err != nil {
 		return err
 	}
