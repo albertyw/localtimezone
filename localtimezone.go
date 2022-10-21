@@ -36,6 +36,13 @@ import (
 //go:embed data.json.gz
 var TZShapeFile []byte
 
+// MockTZShapeFile is similar to TZShapeFile but maps the entire world to the timezone America/Los_Angeles.
+// This data is a small json blob compressed with gzip.
+// It is meant for testing.
+//
+//go:embed data_mock.json.gz
+var MockTZShapeFile []byte
+
 // ErrNoZoneFound is returned when a zone for the given point is not found in the shapefile
 var ErrNoZoneFound = errors.New("no corresponding zone found in shapefile")
 
