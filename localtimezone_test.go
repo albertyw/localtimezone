@@ -132,6 +132,26 @@ func TestGetZone(t *testing.T) {
 	}
 }
 
+func TestMockLocalTimeZone(t *testing.T) {
+	z := NewMockLocalTimeZone()
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			tzid, err := z.GetZone(tc.point)
+			if err != tc.err {
+				t.Errorf("expected err %v; got %v", tc.err, err)
+			}
+			if len(tzid) != 1 {
+				t.Errorf("expected 1 zone; got %d", len(tzid))
+			}
+			if tzid[0] != "America/Los_Angeles" {
+				t.Errorf("expected zone America/Los_Angeles; got %s", tzid[0])
+			}
+		})
+	}
+}
+
 func BenchmarkZones(b *testing.B) {
 	zInterface, err := NewLocalTimeZone()
 	if err != nil {

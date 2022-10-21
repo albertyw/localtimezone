@@ -36,6 +36,13 @@ import (
 //go:embed data.json.gz
 var TZShapeFile []byte
 
+// MockTZShapeFile is similar to TZShapeFile but maps the entire world to the timezone America/Los_Angeles.
+// This data is a small json blob compressed with gzip.
+// It is meant for testing.
+//
+//go:embed data_mock.json.gz
+var MockTZShapeFile []byte
+
 // ErrNoZoneFound is returned when a zone for the given point is not found in the shapefile
 var ErrNoZoneFound = errors.New("no corresponding zone found in shapefile")
 
@@ -64,12 +71,21 @@ type localTimeZone struct {
 // The client is threadsafe
 func NewLocalTimeZone() (LocalTimeZone, error) {
 	z := localTimeZone{}
-	err := z.load()
+	err := z.load(TZShapeFile)
 	return &z, err
 }
 
-func (z *localTimeZone) load() error {
-	g, err := gzip.NewReader(bytes.NewBuffer(TZShapeFile))
+// NewMockLocalTimeZone creates a new LocalTimeZone that always returns
+// America/Los_Angeles as the timezone
+// The client is threadsafe
+func NewMockLocalTimeZone() LocalTimeZone {
+	z := localTimeZone{}
+	z.load(MockTZShapeFile)
+	return &z
+}
+
+func (z *localTimeZone) load(shapeFile []byte) error {
+	g, err := gzip.NewReader(bytes.NewBuffer(shapeFile))
 	if err != nil {
 		return err
 	}
