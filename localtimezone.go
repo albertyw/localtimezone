@@ -75,6 +75,15 @@ func NewLocalTimeZone() (LocalTimeZone, error) {
 	return &z, err
 }
 
+// NewMockLocalTimeZone creates a new LocalTimeZone that always returns
+// America/Los_Angeles as the timezone
+// The client is threadsafe
+func NewMockLocalTimeZone() LocalTimeZone {
+	z := localTimeZone{}
+	z.load(MockTZShapeFile)
+	return &z
+}
+
 func (z *localTimeZone) load(shapeFile []byte) error {
 	g, err := gzip.NewReader(bytes.NewBuffer(shapeFile))
 	if err != nil {
