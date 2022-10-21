@@ -71,12 +71,12 @@ type localTimeZone struct {
 // The client is threadsafe
 func NewLocalTimeZone() (LocalTimeZone, error) {
 	z := localTimeZone{}
-	err := z.load()
+	err := z.load(TZShapeFile)
 	return &z, err
 }
 
-func (z *localTimeZone) load() error {
-	g, err := gzip.NewReader(bytes.NewBuffer(TZShapeFile))
+func (z *localTimeZone) load(shapeFile []byte) error {
+	g, err := gzip.NewReader(bytes.NewBuffer(shapeFile))
 	if err != nil {
 		return err
 	}
