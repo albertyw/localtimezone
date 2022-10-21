@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+v2.1.0
+------
+
+ - Add `NewMockLocalTimeZone` which always returns `"America/Los_Angeles"`
+
+
 v2.0.4
 ------
 
