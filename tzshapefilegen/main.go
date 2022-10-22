@@ -19,6 +19,8 @@ import (
 	"path"
 
 	json "github.com/json-iterator/go"
+	"github.com/paulmach/orb/geojson"
+	"github.com/paulmach/orb/simplify"
 )
 
 const dlURL = "https://github.com/evansiroky/timezone-boundary-builder/releases/download/%s/timezones.geojson.zip"
@@ -79,6 +81,33 @@ func mapshaperExec(mapshaperPath string) error {
 	err := mapshaper.Run()
 	if err != nil {
 		log.Printf("Error: could not run mapshaper: %v\n", err)
+		return err
+	}
+	return nil
+}
+
+func orbExec() error {
+	combinedJSON, err := os.ReadFile("combined.json")
+	if err != nil {
+		log.Printf("Error: could not read combined.json: %v\n", err)
+		return err
+	}
+	fc, err := geojson.UnmarshalFeatureCollection(combinedJSON)
+	if err != nil {
+		log.Printf("Error: could not parse combined.json: %v\n", err)
+		return err
+	}
+	for _, feature := range fc.Features {
+		feature.Geometry = simplify.VisvalingamThreshold(0.0001).Simplify(feature.Geometry)
+	}
+	reducedJSON, err := fc.MarshalJSON()
+	if err != nil {
+		log.Printf("Error: could not marshal reduced.json: %v\n", err)
+		return err
+	}
+	err = os.WriteFile("reduced.json", reducedJSON, 0644)
+	if err != nil {
+		log.Printf("Error: could not write reduced.json: %v\n", err)
 		return err
 	}
 	return nil
@@ -250,6 +279,7 @@ func main() {
 
 	fmt.Println("*** RUNNING MAPSHAPER ***")
 	mapshaperExec(mapshaperPath)
+	orbExec()
 	fmt.Println("*** MAPSHAPER FINISHED ***")
 
 	fmt.Println("*** GENERATING GO CODE ***")
