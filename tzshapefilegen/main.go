@@ -1,22 +1,17 @@
 // Code generation tool for embedding the timezone shapefile in the gotz package
 // run "go generate" in the parent directory after changing the -release flag in gen.go
-// You need mapshaper to be installed and it must be in your $PATH
-// More info on mapshaper: https://github.com/mbloch/mapshaper
 package main
 
 import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
-	"path"
 
 	json "github.com/json-iterator/go"
 	"github.com/paulmach/orb/geojson"
@@ -69,21 +64,6 @@ func getMostCurrentRelease() (version string, url string, err error) {
 		return "", "", fmt.Errorf("cannot find correct zip in latest timezone release")
 	}
 	return version, url, nil
-}
-
-func mapshaperExec(mapshaperPath string) error {
-	mapshaper := exec.Command(mapshaperPath, "-i", "combined.json", "-simplify", "visvalingam", "20%", "-o", "reduced.json")
-	if errors.Is(mapshaper.Err, exec.ErrDot) {
-		mapshaper.Err = nil
-	}
-	mapshaper.Stdout = os.Stdout
-	mapshaper.Stderr = os.Stderr
-	err := mapshaper.Run()
-	if err != nil {
-		log.Printf("Error: could not run mapshaper: %v\n", err)
-		return err
-	}
-	return nil
 }
 
 func orbExec() error {
@@ -187,23 +167,11 @@ func writeVersion(release string, dir string) error {
 }
 
 func main() {
-	mapshaperPath, err := exec.LookPath("mapshaper")
-	if errors.Is(err, exec.ErrDot) {
-		err = nil
-	}
-	if err != nil {
-		log.Fatalln("Error: mapshaper executable not found in $PATH")
-	}
-	cwd, err := os.Getwd()
-	if err != nil {
-		log.Println(err)
-	}
-	mapshaperPath = path.Join(cwd, mapshaperPath)
-
 	release := flag.String("release", defaultRelease, "timezone boundary builder release version")
 	flag.Parse()
 
 	var releaseURL string
+	var err error
 	if *release == defaultRelease {
 		*release, releaseURL, err = getMostCurrentRelease()
 		if err != nil {
@@ -277,10 +245,9 @@ func main() {
 	}
 	geojsonFile.Close()
 
-	fmt.Println("*** RUNNING MAPSHAPER ***")
-	mapshaperExec(mapshaperPath)
+	fmt.Println("*** SIMPLIFYING GEOJSON ***")
 	orbExec()
-	fmt.Println("*** MAPSHAPER FINISHED ***")
+	fmt.Println("*** GEOJSON FINISHED ***")
 
 	fmt.Println("*** GENERATING GO CODE ***")
 	content, err := generateData()
