@@ -145,7 +145,7 @@ func TestMockLocalTimeZone(t *testing.T) {
 			if len(tzid) != 1 {
 				t.Errorf("expected 1 zone; got %d", len(tzid))
 			}
-			if tzid[0] != "America/Los_Angeles" {
+			if tzid[0] != MockTimeZone {
 				t.Errorf("expected zone America/Los_Angeles; got %s", tzid[0])
 			}
 		})

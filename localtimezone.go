@@ -43,6 +43,9 @@ var TZShapeFile []byte
 //go:embed data_mock.json.gz
 var MockTZShapeFile []byte
 
+// MockTimeZone is the timezone that is always returned from the NewMockLocalTimeZone client
+const MockTimeZone = "America/Los_Angeles"
+
 // ErrNoZoneFound is returned when a zone for the given point is not found in the shapefile
 var ErrNoZoneFound = errors.New("no corresponding zone found in shapefile")
 
