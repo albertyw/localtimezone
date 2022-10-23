@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+v2.1.1
+------
+
+ - Add a `MockTimeZone` which is the timezone always returned by the `NewMockLocalTimeZone` client
+ - Significant client loading speedup by optimizing parsing of geojson data
+ - Replace geojson dependency on js mapshaper with go orb package
+
+
 v2.1.0
 ------
 
