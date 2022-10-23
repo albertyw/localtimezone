@@ -109,6 +109,9 @@ func getGeoJSON(releaseURL string) ([]byte, error) {
 }
 
 func orbExec(combinedJSON []byte) ([]byte, error) {
+	geojson.CustomJSONMarshaler = json.ConfigFastest
+	geojson.CustomJSONUnmarshaler = json.ConfigFastest
+
 	fc, err := geojson.UnmarshalFeatureCollection(combinedJSON)
 	if err != nil {
 		log.Printf("Error: could not parse combined.json: %v\n", err)
