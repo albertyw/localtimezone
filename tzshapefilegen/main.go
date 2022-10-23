@@ -111,16 +111,9 @@ func writeData(content []byte, dir string) error {
 		return err
 	}
 
-	gzipFile, err := os.OpenFile("data.json.gz", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	err = os.WriteFile("data.json.gz", content, 0644)
 	if err != nil {
-		log.Printf("Error: could not open file to write: %v\n", err)
-		return err
-	}
-	defer gzipFile.Close()
-
-	_, err = gzipFile.Write(content)
-	if err != nil {
-		log.Printf("Error: could not write data to file: %v\n", err)
+		log.Printf("Error: could not write data.json.gz: %v\n", err)
 		return err
 	}
 	return nil
