@@ -120,7 +120,7 @@ func orbExec(combinedJSON []byte) ([]byte, error) {
 	reducedJSON, err := fc.MarshalJSON()
 	if err != nil {
 		log.Printf("Error: could not marshal reduced.json: %v\n", err)
-		return []byte{}, err
+		return nil, err
 	}
 	return reducedJSON, nil
 }
@@ -130,17 +130,17 @@ func generateData(geoJSON []byte) ([]byte, error) {
 	gzipper, err := gzip.NewWriterLevel(buffer, gzip.BestCompression)
 	if err != nil {
 		log.Printf("Error: could not create gzip writer: %v\n", err)
-		return []byte{}, err
+		return nil, err
 	}
 
 	_, err = gzipper.Write(geoJSON)
 	if err != nil {
 		log.Printf("Error: could not copy data: %v\n", err)
-		return []byte{}, err
+		return nil, err
 	}
 	if err := gzipper.Close(); err != nil {
 		log.Printf("Error: could not flush/close gzip: %v\n", err)
-		return []byte{}, err
+		return nil, err
 	}
 
 	return buffer.Bytes(), nil
