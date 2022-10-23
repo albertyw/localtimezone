@@ -66,12 +66,7 @@ func getMostCurrentRelease() (version string, url string, err error) {
 	return version, url, nil
 }
 
-func orbExec() error {
-	combinedJSON, err := os.ReadFile("combined.json")
-	if err != nil {
-		log.Printf("Error: could not read combined.json: %v\n", err)
-		return err
-	}
+func orbExec(combinedJSON []byte) error {
 	fc, err := geojson.UnmarshalFeatureCollection(combinedJSON)
 	if err != nil {
 		log.Printf("Error: could not parse combined.json: %v\n", err)
@@ -207,9 +202,15 @@ func main() {
 		return
 	}
 
-	geojsonData, err := zipReader.File[0].Open()
+	geojsonDataReader, err := zipReader.File[0].Open()
 	if err != nil {
 		log.Printf("Error: could not read from zip file: %v\n", err)
+		return
+	}
+
+	geojsonData, err := io.ReadAll(geojsonDataReader)
+	if err != nil {
+		log.Printf("Error: could not read combined.json from zip file: %v\n", err)
 		return
 	}
 
@@ -219,34 +220,8 @@ func main() {
 		return
 	}
 
-	tmpDir, err := os.MkdirTemp("", "")
-	if err != nil {
-		log.Printf("Error: could not create tmp dir: %v\n", err)
-		return
-	}
-
-	err = os.Chdir(tmpDir)
-	if err != nil {
-		log.Printf("Error: could not switch to tmp dir: %v\n", err)
-		return
-	}
-
-	geojsonFile, err := os.Create("./combined.json")
-	if err != nil {
-		log.Printf("Error: could not create combinedJSON file: %v\n", err)
-		return
-	}
-
-	_, err = io.Copy(geojsonFile, geojsonData)
-	if err != nil {
-		geojsonFile.Close()
-		log.Printf("Error: could not copy from zip to combined.json: %v\n", err)
-		return
-	}
-	geojsonFile.Close()
-
 	fmt.Println("*** SIMPLIFYING GEOJSON ***")
-	orbExec()
+	orbExec(geojsonData)
 	fmt.Println("*** GEOJSON FINISHED ***")
 
 	fmt.Println("*** GENERATING GO CODE ***")
@@ -265,6 +240,5 @@ func main() {
 		return
 	}
 
-	os.RemoveAll(tmpDir)
 	fmt.Println("*** ALL DONE, YAY ***")
 }
