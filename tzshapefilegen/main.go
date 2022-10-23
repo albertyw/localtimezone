@@ -176,6 +176,7 @@ func main() {
 	release := flag.String("release", defaultRelease, "timezone boundary builder release version")
 	flag.Parse()
 
+	fmt.Println("*** GETTING TIMEZONE BOUNDARY RELEASE ***")
 	var releaseURL string
 	var err error
 	if *release == defaultRelease {
@@ -186,6 +187,8 @@ func main() {
 	} else {
 		releaseURL = fmt.Sprintf(dlURL, *release)
 	}
+
+	fmt.Println("*** GETTING TIMEZONE BOUNDARY DATA ***")
 	geojsonData, err := getGeoJSON(releaseURL)
 	if err != nil {
 		return
