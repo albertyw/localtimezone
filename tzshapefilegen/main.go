@@ -66,6 +66,48 @@ func getMostCurrentRelease() (version string, url string, err error) {
 	return version, url, nil
 }
 
+func getGeoJSON(releaseURL string) ([]byte, error) {
+	resp, err := http.Get(releaseURL)
+	if err != nil {
+		log.Fatalf("Error: could not download tz shapefile: %v\n", err)
+	}
+	defer resp.Body.Close()
+
+	buffer := bytes.NewBuffer([]byte{})
+	_, err = io.Copy(buffer, resp.Body)
+	if err != nil {
+		log.Printf("Download failed: %v\n", err)
+		return nil, err
+	}
+
+	bufferReader := bytes.NewReader(buffer.Bytes())
+	zipReader, err := zip.NewReader(bufferReader, resp.ContentLength)
+	if err != nil {
+		log.Printf("Could not access zipfile: %v\n", err)
+		return nil, err
+	}
+	if len(zipReader.File) == 0 {
+		log.Println("Error: release zip file have no files!")
+		return nil, err
+	} else if zipReader.File[0].Name != "combined.json" {
+		log.Println("Error: first file in zip file is not combined.json")
+		return nil, err
+	}
+
+	geojsonDataReader, err := zipReader.File[0].Open()
+	if err != nil {
+		log.Printf("Error: could not read from zip file: %v\n", err)
+		return nil, err
+	}
+
+	geojsonData, err := io.ReadAll(geojsonDataReader)
+	if err != nil {
+		log.Printf("Error: could not read combined.json from zip file: %v\n", err)
+		return nil, err
+	}
+	return geojsonData, nil
+}
+
 func orbExec(combinedJSON []byte) ([]byte, error) {
 	fc, err := geojson.UnmarshalFeatureCollection(combinedJSON)
 	if err != nil {
@@ -144,42 +186,8 @@ func main() {
 	} else {
 		releaseURL = fmt.Sprintf(dlURL, *release)
 	}
-	resp, err := http.Get(releaseURL)
+	geojsonData, err := getGeoJSON(releaseURL)
 	if err != nil {
-		log.Fatalf("Error: could not download tz shapefile: %v\n", err)
-	}
-	defer resp.Body.Close()
-
-	buffer := bytes.NewBuffer([]byte{})
-	_, err = io.Copy(buffer, resp.Body)
-	if err != nil {
-		log.Printf("Download failed: %v\n", err)
-		return
-	}
-
-	bufferReader := bytes.NewReader(buffer.Bytes())
-	zipReader, err := zip.NewReader(bufferReader, resp.ContentLength)
-	if err != nil {
-		log.Printf("Could not access zipfile: %v\n", err)
-		return
-	}
-	if len(zipReader.File) == 0 {
-		log.Println("Error: release zip file have no files!")
-		return
-	} else if zipReader.File[0].Name != "combined.json" {
-		log.Println("Error: first file in zip file is not combined.json")
-		return
-	}
-
-	geojsonDataReader, err := zipReader.File[0].Open()
-	if err != nil {
-		log.Printf("Error: could not read from zip file: %v\n", err)
-		return
-	}
-
-	geojsonData, err := io.ReadAll(geojsonDataReader)
-	if err != nil {
-		log.Printf("Error: could not read combined.json from zip file: %v\n", err)
 		return
 	}
 
