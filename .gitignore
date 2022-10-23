@@ -15,6 +15,3 @@
 # vendor/
 
 coverage.txt
-
-# Used for installing mapshaper
-node_modules
