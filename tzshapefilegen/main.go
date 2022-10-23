@@ -1,24 +1,21 @@
 // Code generation tool for embedding the timezone shapefile in the gotz package
 // run "go generate" in the parent directory after changing the -release flag in gen.go
-// You need mapshaper to be installed and it must be in your $PATH
-// More info on mapshaper: https://github.com/mbloch/mapshaper
 package main
 
 import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
-	"path"
 
 	json "github.com/json-iterator/go"
+	"github.com/paulmach/orb/geojson"
+	"github.com/paulmach/orb/simplify"
 )
 
 const dlURL = "https://github.com/evansiroky/timezone-boundary-builder/releases/download/%s/timezones.geojson.zip"
@@ -69,79 +66,100 @@ func getMostCurrentRelease() (version string, url string, err error) {
 	return version, url, nil
 }
 
-func mapshaperExec(mapshaperPath string) error {
-	mapshaper := exec.Command(mapshaperPath, "-i", "combined.json", "-simplify", "visvalingam", "20%", "-o", "reduced.json")
-	if errors.Is(mapshaper.Err, exec.ErrDot) {
-		mapshaper.Err = nil
-	}
-	mapshaper.Stdout = os.Stdout
-	mapshaper.Stderr = os.Stderr
-	err := mapshaper.Run()
+func getGeoJSON(releaseURL string) ([]byte, error) {
+	resp, err := http.Get(releaseURL)
 	if err != nil {
-		log.Printf("Error: could not run mapshaper: %v\n", err)
-		return err
+		log.Fatalf("Error: could not download tz shapefile: %v\n", err)
 	}
-	return nil
+	defer resp.Body.Close()
+
+	buffer := bytes.NewBuffer([]byte{})
+	_, err = io.Copy(buffer, resp.Body)
+	if err != nil {
+		log.Printf("Download failed: %v\n", err)
+		return nil, err
+	}
+
+	bufferReader := bytes.NewReader(buffer.Bytes())
+	zipReader, err := zip.NewReader(bufferReader, resp.ContentLength)
+	if err != nil {
+		log.Printf("Could not access zipfile: %v\n", err)
+		return nil, err
+	}
+	if len(zipReader.File) == 0 {
+		log.Println("Error: release zip file have no files!")
+		return nil, err
+	} else if zipReader.File[0].Name != "combined.json" {
+		log.Println("Error: first file in zip file is not combined.json")
+		return nil, err
+	}
+
+	geojsonDataReader, err := zipReader.File[0].Open()
+	if err != nil {
+		log.Printf("Error: could not read from zip file: %v\n", err)
+		return nil, err
+	}
+
+	geojsonData, err := io.ReadAll(geojsonDataReader)
+	if err != nil {
+		log.Printf("Error: could not read combined.json from zip file: %v\n", err)
+		return nil, err
+	}
+	return geojsonData, nil
 }
 
-func generateData() ([]byte, error) {
-	reducedFile, err := os.Open("reduced.json")
-	if err != nil {
-		log.Printf("Error: could not open file to read: %v\n", err)
-		return []byte{}, err
-	}
-	defer reducedFile.Close()
+func orbExec(combinedJSON []byte) ([]byte, error) {
+	geojson.CustomJSONMarshaler = json.ConfigFastest
+	geojson.CustomJSONUnmarshaler = json.ConfigFastest
 
+	fc, err := geojson.UnmarshalFeatureCollection(combinedJSON)
+	if err != nil {
+		log.Printf("Error: could not parse combined.json: %v\n", err)
+		return nil, err
+	}
+	for _, feature := range fc.Features {
+		feature.Geometry = simplify.VisvalingamThreshold(0.0001).Simplify(feature.Geometry)
+	}
+	reducedJSON, err := fc.MarshalJSON()
+	if err != nil {
+		log.Printf("Error: could not marshal reduced.json: %v\n", err)
+		return nil, err
+	}
+	return reducedJSON, nil
+}
+
+func generateData(geoJSON []byte) ([]byte, error) {
 	buffer := bytes.NewBuffer([]byte{})
 	gzipper, err := gzip.NewWriterLevel(buffer, gzip.BestCompression)
 	if err != nil {
 		log.Printf("Error: could not create gzip writer: %v\n", err)
-		return []byte{}, err
+		return nil, err
 	}
 
-	_, err = io.Copy(gzipper, reducedFile)
+	_, err = gzipper.Write(geoJSON)
 	if err != nil {
 		log.Printf("Error: could not copy data: %v\n", err)
-		return []byte{}, err
+		return nil, err
 	}
 	if err := gzipper.Close(); err != nil {
 		log.Printf("Error: could not flush/close gzip: %v\n", err)
-		return []byte{}, err
+		return nil, err
 	}
 
 	return buffer.Bytes(), nil
 }
 
-func writeData(content []byte, dir string) error {
-	err := os.Chdir(dir)
+func writeData(content []byte) error {
+	err := os.WriteFile("data.json.gz", content, 0644)
 	if err != nil {
-		log.Printf("Error: could not switch to previous dir: %v", err)
-		return err
-	}
-
-	gzipFile, err := os.OpenFile("data.json.gz", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		log.Printf("Error: could not open file to write: %v\n", err)
-		return err
-	}
-	defer gzipFile.Close()
-
-	_, err = gzipFile.Write(content)
-	if err != nil {
-		log.Printf("Error: could not write data to file: %v\n", err)
+		log.Printf("Error: could not write data.json.gz: %v\n", err)
 		return err
 	}
 	return nil
 }
 
-func writeVersion(release string, dir string) error {
+func writeVersion(release string) error {
 	content := fmt.Sprintf(versionTemplate, release)
-	err := os.Chdir(dir)
-	if err != nil {
-		log.Printf("Error: could not switch to previous dir: %v", err)
-		return err
-	}
-
 	outfile, err := os.Create("version.go")
 	if err != nil {
 		log.Printf("Error: could not create version.go: %v", err)
@@ -158,23 +176,12 @@ func writeVersion(release string, dir string) error {
 }
 
 func main() {
-	mapshaperPath, err := exec.LookPath("mapshaper")
-	if errors.Is(err, exec.ErrDot) {
-		err = nil
-	}
-	if err != nil {
-		log.Fatalln("Error: mapshaper executable not found in $PATH")
-	}
-	cwd, err := os.Getwd()
-	if err != nil {
-		log.Println(err)
-	}
-	mapshaperPath = path.Join(cwd, mapshaperPath)
-
 	release := flag.String("release", defaultRelease, "timezone boundary builder release version")
 	flag.Parse()
 
+	fmt.Println("*** GETTING TIMEZONE BOUNDARY RELEASE ***")
 	var releaseURL string
+	var err error
 	if *release == defaultRelease {
 		*release, releaseURL, err = getMostCurrentRelease()
 		if err != nil {
@@ -183,91 +190,35 @@ func main() {
 	} else {
 		releaseURL = fmt.Sprintf(dlURL, *release)
 	}
-	resp, err := http.Get(releaseURL)
-	if err != nil {
-		log.Fatalf("Error: could not download tz shapefile: %v\n", err)
-	}
-	defer resp.Body.Close()
 
-	buffer := bytes.NewBuffer([]byte{})
-	_, err = io.Copy(buffer, resp.Body)
+	fmt.Println("*** GETTING TIMEZONE BOUNDARY DATA ***")
+	geojsonData, err := getGeoJSON(releaseURL)
 	if err != nil {
-		log.Printf("Download failed: %v\n", err)
 		return
 	}
 
-	bufferReader := bytes.NewReader(buffer.Bytes())
-	zipReader, err := zip.NewReader(bufferReader, resp.ContentLength)
+	fmt.Println("*** SIMPLIFYING GEOJSON ***")
+	geojsonData, err = orbExec(geojsonData)
 	if err != nil {
-		log.Printf("Could not access zipfile: %v\n", err)
 		return
 	}
-	if len(zipReader.File) == 0 {
-		log.Println("Error: release zip file have no files!")
-		return
-	} else if zipReader.File[0].Name != "combined.json" {
-		log.Println("Error: first file in zip file is not combined.json")
-		return
-	}
-
-	geojsonData, err := zipReader.File[0].Open()
-	if err != nil {
-		log.Printf("Error: could not read from zip file: %v\n", err)
-		return
-	}
-
-	currDir, err := os.Getwd()
-	if err != nil {
-		log.Printf("Error: could not get current dir: %v\n", err)
-		return
-	}
-
-	tmpDir, err := os.MkdirTemp("", "")
-	if err != nil {
-		log.Printf("Error: could not create tmp dir: %v\n", err)
-		return
-	}
-
-	err = os.Chdir(tmpDir)
-	if err != nil {
-		log.Printf("Error: could not switch to tmp dir: %v\n", err)
-		return
-	}
-
-	geojsonFile, err := os.Create("./combined.json")
-	if err != nil {
-		log.Printf("Error: could not create combinedJSON file: %v\n", err)
-		return
-	}
-
-	_, err = io.Copy(geojsonFile, geojsonData)
-	if err != nil {
-		geojsonFile.Close()
-		log.Printf("Error: could not copy from zip to combined.json: %v\n", err)
-		return
-	}
-	geojsonFile.Close()
-
-	fmt.Println("*** RUNNING MAPSHAPER ***")
-	mapshaperExec(mapshaperPath)
-	fmt.Println("*** MAPSHAPER FINISHED ***")
+	fmt.Println("*** GEOJSON FINISHED ***")
 
 	fmt.Println("*** GENERATING GO CODE ***")
-	content, err := generateData()
+	content, err := generateData(geojsonData)
 	if err != nil {
 		return
 	}
 
-	err = writeData(content, currDir)
+	err = writeData(content)
 	if err != nil {
 		return
 	}
 
-	err = writeVersion(*release, currDir)
+	err = writeVersion(*release)
 	if err != nil {
 		return
 	}
 
-	os.RemoveAll(tmpDir)
 	fmt.Println("*** ALL DONE, YAY ***")
 }

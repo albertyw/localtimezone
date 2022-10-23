@@ -29,7 +29,7 @@ fmt.Println(zone[0])
 
 Uses simplified shapefile from [timezone-boundary-builder](https://github.com/evansiroky/timezone-boundary-builder/)
 
-GeoJson Simplification done with [mapshaper](https://mapshaper.org/)
+GeoJson Simplification done with [orb](https://github.com/paulmach/orb).
 
 ## Features
 
