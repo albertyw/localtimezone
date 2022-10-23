@@ -27,7 +27,7 @@ import (
 	"math"
 	"sync"
 
-	"github.com/goccy/go-json"
+	json "github.com/json-iterator/go"
 )
 
 // TZShapeFile is the data containing geographic shapes for timezone borders.

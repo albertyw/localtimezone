@@ -18,7 +18,7 @@ import (
 	"os/exec"
 	"path"
 
-	"github.com/goccy/go-json"
+	json "github.com/json-iterator/go"
 )
 
 const dlURL = "https://github.com/evansiroky/timezone-boundary-builder/releases/download/%s/timezones.geojson.zip"
