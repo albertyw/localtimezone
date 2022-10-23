@@ -104,14 +104,8 @@ func generateData(geoJSON []byte) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func writeData(content []byte, dir string) error {
-	err := os.Chdir(dir)
-	if err != nil {
-		log.Printf("Error: could not switch to previous dir: %v", err)
-		return err
-	}
-
-	err = os.WriteFile("data.json.gz", content, 0644)
+func writeData(content []byte) error {
+	err := os.WriteFile("data.json.gz", content, 0644)
 	if err != nil {
 		log.Printf("Error: could not write data.json.gz: %v\n", err)
 		return err
@@ -119,14 +113,8 @@ func writeData(content []byte, dir string) error {
 	return nil
 }
 
-func writeVersion(release string, dir string) error {
+func writeVersion(release string) error {
 	content := fmt.Sprintf(versionTemplate, release)
-	err := os.Chdir(dir)
-	if err != nil {
-		log.Printf("Error: could not switch to previous dir: %v", err)
-		return err
-	}
-
 	outfile, err := os.Create("version.go")
 	if err != nil {
 		log.Printf("Error: could not create version.go: %v", err)
@@ -195,12 +183,6 @@ func main() {
 		return
 	}
 
-	currDir, err := os.Getwd()
-	if err != nil {
-		log.Printf("Error: could not get current dir: %v\n", err)
-		return
-	}
-
 	fmt.Println("*** SIMPLIFYING GEOJSON ***")
 	geojsonData, err = orbExec(geojsonData)
 	if err != nil {
@@ -214,12 +196,12 @@ func main() {
 		return
 	}
 
-	err = writeData(content, currDir)
+	err = writeData(content)
 	if err != nil {
 		return
 	}
 
-	err = writeVersion(*release, currDir)
+	err = writeVersion(*release)
 	if err != nil {
 		return
 	}
