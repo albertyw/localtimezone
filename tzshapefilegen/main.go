@@ -221,7 +221,10 @@ func main() {
 	}
 
 	fmt.Println("*** SIMPLIFYING GEOJSON ***")
-	orbExec(geojsonData)
+	err = orbExec(geojsonData)
+	if err != nil {
+		return
+	}
 	fmt.Println("*** GEOJSON FINISHED ***")
 
 	fmt.Println("*** GENERATING GO CODE ***")
