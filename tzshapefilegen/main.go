@@ -66,11 +66,11 @@ func getMostCurrentRelease() (version string, url string, err error) {
 	return version, url, nil
 }
 
-func orbExec(combinedJSON []byte) error {
+func orbExec(combinedJSON []byte) ([]byte, error) {
 	fc, err := geojson.UnmarshalFeatureCollection(combinedJSON)
 	if err != nil {
 		log.Printf("Error: could not parse combined.json: %v\n", err)
-		return err
+		return nil, err
 	}
 	for _, feature := range fc.Features {
 		feature.Geometry = simplify.VisvalingamThreshold(0.0001).Simplify(feature.Geometry)
@@ -78,24 +78,12 @@ func orbExec(combinedJSON []byte) error {
 	reducedJSON, err := fc.MarshalJSON()
 	if err != nil {
 		log.Printf("Error: could not marshal reduced.json: %v\n", err)
-		return err
-	}
-	err = os.WriteFile("reduced.json", reducedJSON, 0644)
-	if err != nil {
-		log.Printf("Error: could not write reduced.json: %v\n", err)
-		return err
-	}
-	return nil
-}
-
-func generateData() ([]byte, error) {
-	reducedFile, err := os.Open("reduced.json")
-	if err != nil {
-		log.Printf("Error: could not open file to read: %v\n", err)
 		return []byte{}, err
 	}
-	defer reducedFile.Close()
+	return reducedJSON, nil
+}
 
+func generateData(geoJSON []byte) ([]byte, error) {
 	buffer := bytes.NewBuffer([]byte{})
 	gzipper, err := gzip.NewWriterLevel(buffer, gzip.BestCompression)
 	if err != nil {
@@ -103,7 +91,7 @@ func generateData() ([]byte, error) {
 		return []byte{}, err
 	}
 
-	_, err = io.Copy(gzipper, reducedFile)
+	_, err = gzipper.Write(geoJSON)
 	if err != nil {
 		log.Printf("Error: could not copy data: %v\n", err)
 		return []byte{}, err
@@ -221,14 +209,14 @@ func main() {
 	}
 
 	fmt.Println("*** SIMPLIFYING GEOJSON ***")
-	err = orbExec(geojsonData)
+	geojsonData, err = orbExec(geojsonData)
 	if err != nil {
 		return
 	}
 	fmt.Println("*** GEOJSON FINISHED ***")
 
 	fmt.Println("*** GENERATING GO CODE ***")
-	content, err := generateData()
+	content, err := generateData(geojsonData)
 	if err != nil {
 		return
 	}
