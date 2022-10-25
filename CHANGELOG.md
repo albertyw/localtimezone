@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+v2.1.2
+------
+
+ - Update from tzdata 2021c to 2022b.  Full changelog at https://github.com/evansiroky/timezone-boundary-builder/releases/tag/2022b
+   This update changes several timezone borders.
+   This update also renames the `Europe/Kiev` timezone to `Europe/Kyiv`.  Note that **this may be backwards incompatible** depending on how you are using timezone data.
+
+
 v2.1.1
 ------
 
