@@ -255,7 +255,7 @@ Shaoguan,24.8011,113.5927,Asia/Shanghai
 Shanwei,22.7664,115.3331,Asia/Shanghai
 Kuwait City,29.375,47.98,Asia/Kuwait
 Minneapolis,44.9635,-93.2678,America/Chicago
-Kyiv,50.45,30.5236,Europe/Kiev
+Kyiv,50.45,30.5236,Europe/Kyiv
 Quezon City,14.6333,121.0333,Asia/Manila
 Sanaa,15.35,44.2,Asia/Aden
 Meishan,30.0575,103.8381,Asia/Shanghai
@@ -495,7 +495,7 @@ Kyōto,35.0117,135.7683,Asia/Tokyo
 Shuangyashan,46.6388,131.1545,Asia/Shanghai
 Pizhou,34.3422,118.0097,Asia/Shanghai
 El Kelaa des Srarhna,32.05,-7.4,Africa/Casablanca
-Kharkiv,50,36.2292,Europe/Kiev
+Kharkiv,50,36.2292,Europe/Kyiv
 Yangshe,31.8775,120.5512,Asia/Shanghai
 Guyuan,36.008,106.2782,Asia/Shanghai
 Muscat,23.6139,58.5922,Asia/Muscat
@@ -680,7 +680,7 @@ Wafangdian,39.6271,121.9972,Asia/Shanghai
 Zhongxiang,31.169,112.5853,Asia/Shanghai
 Monrovia,6.3106,-10.8047,Africa/Monrovia
 New Orleans,30.0687,-89.9288,America/Chicago
-Odesa,46.4775,30.7326,Europe/Kiev
+Odesa,46.4775,30.7326,Europe/Kyiv
 Volgograd,48.7086,44.5147,Europe/Volgograd
 Islamabad,33.6989,73.0369,Asia/Karachi
 Mysore,12.3086,76.6531,Asia/Kolkata

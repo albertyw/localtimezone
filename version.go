@@ -3,4 +3,4 @@
 package localtimezone
 
 // TZBoundaryVersion is the version of tzdata that was used to generate timezone boundaries
-const TZBoundaryVersion = "2021c"
+const TZBoundaryVersion = "2022b"
