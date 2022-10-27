@@ -158,6 +158,8 @@ func BenchmarkZones(b *testing.B) {
 		b.Errorf("cannot initialize timezone client: %v", err)
 	}
 	z := zInterface.(*localTimeZone)
+	z.mu.RLock()
+	z.mu.RUnlock() //lint:ignore SA2001 Make sure client has loaded
 	b.Run("polygon centers", func(b *testing.B) {
 	Loop:
 		for n := 0; n < b.N; {
