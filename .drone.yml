@@ -8,6 +8,7 @@ steps:
     commands:
       - make test
       - make race
+      - make benchmark
       - curl -Os https://uploader.codecov.io/latest/linux/codecov
       - chmod +x codecov
       - ./codecov

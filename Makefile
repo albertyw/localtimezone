@@ -9,6 +9,10 @@ test:
 	gofmt -e -l -d -s .
 	go mod tidy
 
+.PHONY:benchmark
+benchmark:
+	go test -bench=.
+
 .PHONY:race
 race:
 	go test -race ./...
