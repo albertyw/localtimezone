@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+v2.1.4
+------
+
+ - Update tzdata from 2022d to 2022f.  Full changelog at https://github.com/evansiroky/timezone-boundary-builder/releases/tag/2022f
+ - Update dependencies
+
+
 v2.1.3
 ------
 
