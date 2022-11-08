@@ -28,6 +28,7 @@ import (
 	"sync"
 
 	json "github.com/json-iterator/go"
+	"github.com/paulmach/orb/geojson"
 )
 
 // TZShapeFile is the data containing geographic shapes for timezone borders.
@@ -66,6 +67,7 @@ type LocalTimeZone interface {
 type centers map[string][]Point
 type localTimeZone struct {
 	tzdata      *FeatureCollection
+	orbData     *geojson.FeatureCollection
 	centerCache *centers
 	mu          sync.RWMutex
 }
@@ -196,6 +198,23 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 		z.mu.Unlock()
 		return err
 	}
+
+	g, err := gzip.NewReader(bytes.NewBuffer(TZShapeFile))
+	if err != nil {
+		z.mu.Unlock()
+		return err
+	}
+	defer g.Close()
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(g)
+	geojson.CustomJSONUnmarshaler = json.ConfigFastest
+	orbData, err := geojson.UnmarshalFeatureCollection(buf.Bytes())
+	if err != nil {
+		z.mu.Unlock()
+		return err
+	}
+	z.orbData = orbData
+
 	go func() {
 		defer z.mu.Unlock()
 		z.buildCenterCache()
