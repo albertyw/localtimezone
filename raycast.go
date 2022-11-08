@@ -6,17 +6,6 @@ import (
 
 type polygon []Point
 
-func (p polygon) centroid() Point {
-	x := 0.0
-	y := 0.0
-	numPoints := float64(len(p))
-	for _, p := range p {
-		x += p.Lon
-		y += p.Lat
-	}
-	return Point{x / numPoints, y / numPoints}
-}
-
 func (p polygon) isClosed() bool {
 	return len(p) >= 3
 }

@@ -28,7 +28,9 @@ import (
 	"sync"
 
 	json "github.com/json-iterator/go"
+	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geojson"
+	"github.com/paulmach/orb/planar"
 )
 
 // TZShapeFile is the data containing geographic shapes for timezone borders.
@@ -175,14 +177,23 @@ func getNauticalZone(point Point) (tzid []string, err error) {
 // BuildCenterCache builds centers for polygons
 func (z *localTimeZone) buildCenterCache() {
 	centerCache := make(centers)
-	var tzid string
-	for _, v := range z.tzdata.Features {
-		if v.Properties.Tzid == "" {
+	for _, v := range z.orbData.Features {
+		tzid, ok := v.Properties["tzid"].(string)
+		if !ok || tzid == "" {
 			continue
 		}
-		tzid = v.Properties.Tzid
-		for _, poly := range v.Geometry.Coordinates {
-			centerCache[tzid] = append(centerCache[tzid], polygon(poly).centroid())
+		geoType := v.Geometry.GeoJSONType()
+		var multiPolygon orb.MultiPolygon
+		if geoType == "Polygon" {
+			multiPolygon = []orb.Polygon{v.Geometry.(orb.Polygon)}
+		} else if geoType == "MultiPolygon" {
+			multiPolygon = v.Geometry.(orb.MultiPolygon)
+		}
+		for _, polygon := range multiPolygon {
+			for _, ring := range polygon {
+				point, _ := planar.CentroidArea(ring)
+				centerCache[tzid] = append(centerCache[tzid], Point{point[0], point[1]})
+			}
 		}
 	}
 	z.centerCache = &centerCache
