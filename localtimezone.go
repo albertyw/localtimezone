@@ -116,8 +116,9 @@ func (z *localTimeZone) load(shapeFile []byte) error {
 }
 
 // GetZone returns a slice of strings containing time zone id's for a given Point
-func (z *localTimeZone) GetZone(p Point) (tzid []string, err error) {
-	if p.Lon > 180 || p.Lon < -180 || p.Lat > 90 || p.Lat < -90 {
+func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
+	p := PointToOrb(point)
+	if p[0] > 180 || p[0] < -180 || p[1] > 90 || p[1] < -90 {
 		return nil, ErrOutOfRange
 	}
 	z.mu.RLock()
@@ -132,10 +133,10 @@ func (z *localTimeZone) GetZone(p Point) (tzid []string, err error) {
 		bboxes := v.Geometry.BoundingBoxes
 		for i := 0; i < len(polys); i++ {
 			//Check bounding box first
-			if !inBoundingBox(bboxes[i], &p) {
+			if !inBoundingBox(bboxes[i], p) {
 				continue
 			}
-			if polygon(polys[i]).contains(&p) {
+			if polygon(polys[i]).contains(p) {
 				tzid = append(tzid, id)
 			}
 		}
@@ -143,7 +144,7 @@ func (z *localTimeZone) GetZone(p Point) (tzid []string, err error) {
 	if len(tzid) > 0 {
 		return tzid, nil
 	}
-	return z.getClosestZone(PointToOrb(p))
+	return z.getClosestZone(p)
 }
 
 func (z *localTimeZone) getClosestZone(point orb.Point) (tzid []string, err error) {

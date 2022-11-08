@@ -2,6 +2,8 @@ package localtimezone
 
 import (
 	"math"
+
+	"github.com/paulmach/orb"
 )
 
 type polygon []Point
@@ -11,7 +13,7 @@ func (p polygon) isClosed() bool {
 }
 
 // Returns whether or not the current Polygon contains the passed in Point.
-func (p polygon) contains(point *Point) bool {
+func (p polygon) contains(point orb.Point) bool {
 	if !p.isClosed() {
 		return false
 	}
@@ -31,30 +33,30 @@ func (p polygon) contains(point *Point) bool {
 }
 
 // https://rosettacode.org/wiki/Ray-casting_algorithm#Go
-func intersectsWithRaycast(point, start, end *Point) bool {
+func intersectsWithRaycast(point orb.Point, start, end *Point) bool {
 	if start.Lat > end.Lat {
 		start, end = end, start
 	}
-	for point.Lat == start.Lat || point.Lat == end.Lat {
-		point.Lat = math.Nextafter(point.Lat, math.Inf(1))
+	for point[1] == start.Lat || point[1] == end.Lat {
+		point[1] = math.Nextafter(point[1], math.Inf(1))
 	}
-	if point.Lat < start.Lat || point.Lat > end.Lat {
+	if point[1] < start.Lat || point[1] > end.Lat {
 		return false
 	}
 	if start.Lon > end.Lon {
-		if point.Lon > start.Lon {
+		if point[0] > start.Lon {
 			return false
 		}
-		if point.Lon < end.Lon {
+		if point[0] < end.Lon {
 			return true
 		}
 	} else {
-		if point.Lon > end.Lon {
+		if point[0] > end.Lon {
 			return false
 		}
-		if point.Lon < start.Lon {
+		if point[0] < start.Lon {
 			return true
 		}
 	}
-	return (point.Lat-start.Lat)/(point.Lon-start.Lon) >= (end.Lat-start.Lat)/(end.Lon-start.Lon)
+	return (point[1]-start.Lat)/(point[0]-start.Lon) >= (end.Lat-start.Lat)/(end.Lon-start.Lon)
 }
