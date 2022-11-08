@@ -76,7 +76,7 @@ type LocalTimeZone interface {
 	GetZone(p Point) (tzid []string, err error)
 }
 
-type centers map[string][]Point
+type centers map[string][]orb.Point
 type localTimeZone struct {
 	tzdata      *FeatureCollection
 	orbData     *geojson.FeatureCollection
@@ -143,16 +143,16 @@ func (z *localTimeZone) GetZone(p Point) (tzid []string, err error) {
 	if len(tzid) > 0 {
 		return tzid, nil
 	}
-	return z.getClosestZone(p)
+	return z.getClosestZone(PointToOrb(p))
 }
 
-func distanceFrom(p1, p2 Point) float64 {
-	d0 := (p1.Lon - p2.Lon)
-	d1 := (p1.Lat - p2.Lat)
+func distanceFrom(p1, p2 orb.Point) float64 {
+	d0 := (p1[0] - p2[0])
+	d1 := (p1[1] - p2[1])
 	return math.Sqrt(d0*d0 + d1*d1)
 }
 
-func (z *localTimeZone) getClosestZone(point Point) (tzid []string, err error) {
+func (z *localTimeZone) getClosestZone(point orb.Point) (tzid []string, err error) {
 	mindist := math.Inf(1)
 	var winner string
 	for id, v := range *z.centerCache {
@@ -171,14 +171,14 @@ func (z *localTimeZone) getClosestZone(point Point) (tzid []string, err error) {
 	return append(tzid, winner), nil
 }
 
-func getNauticalZone(point Point) (tzid []string, err error) {
-	z := point.Lon / 7.5
+func getNauticalZone(point orb.Point) (tzid []string, err error) {
+	z := point[0] / 7.5
 	z = (math.Abs(z) + 1) / 2
 	z = math.Floor(z)
 	if z == 0 {
 		return append(tzid, "Etc/GMT"), nil
 	}
-	if point.Lon < 0 {
+	if point[0] < 0 {
 		return append(tzid, fmt.Sprintf("Etc/GMT+%.f", z)), nil
 	}
 	return append(tzid, fmt.Sprintf("Etc/GMT-%.f", z)), nil
@@ -202,7 +202,7 @@ func (z *localTimeZone) buildCenterCache() {
 		for _, polygon := range multiPolygon {
 			for _, ring := range polygon {
 				point, _ := planar.CentroidArea(ring)
-				centerCache[tzid] = append(centerCache[tzid], PointFromOrb(point))
+				centerCache[tzid] = append(centerCache[tzid], point)
 			}
 		}
 	}

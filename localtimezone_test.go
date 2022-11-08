@@ -192,7 +192,7 @@ func BenchmarkZones(b *testing.B) {
 					if n > b.N {
 						break Loop
 					}
-					_, err := z.GetZone(v[i])
+					_, err := z.GetZone(PointFromOrb(v[i]))
 					if err != nil {
 						b.Errorf("point %v did not return a zone", v[i])
 					}
@@ -238,7 +238,7 @@ func TestNautical(t *testing.T) {
 		tc := tc // Remove race condition over test fields
 		t.Run(fmt.Sprintf("%f %s", tc.lon, tc.zone), func(t *testing.T) {
 			t.Parallel()
-			z, _ := getNauticalZone(Point{Lat: 0, Lon: tc.lon})
+			z, _ := getNauticalZone(orb.Point{tc.lon, 0})
 			if z[0] != tc.zone {
 				t.Errorf("expected %s got %s", tc.zone, z[0])
 			}
