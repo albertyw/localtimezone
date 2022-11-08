@@ -191,22 +191,18 @@ func (z *localTimeZone) buildCenterCache() {
 // LoadGeoJSON loads a custom GeoJSON shapefile from a Reader
 func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	z.mu.Lock()
+
+	var buf bytes.Buffer
+	tee := io.TeeReader(r, &buf)
+
 	collection := FeatureCollection{}
 	z.tzdata = &collection
-	err := json.ConfigFastest.NewDecoder(r).Decode(&z.tzdata)
+	err := json.ConfigFastest.NewDecoder(tee).Decode(&z.tzdata)
 	if err != nil {
 		z.mu.Unlock()
 		return err
 	}
 
-	g, err := gzip.NewReader(bytes.NewBuffer(TZShapeFile))
-	if err != nil {
-		z.mu.Unlock()
-		return err
-	}
-	defer g.Close()
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(g)
 	geojson.CustomJSONUnmarshaler = json.ConfigFastest
 	orbData, err := geojson.UnmarshalFeatureCollection(buf.Bytes())
 	if err != nil {
