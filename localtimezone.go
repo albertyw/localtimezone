@@ -146,18 +146,12 @@ func (z *localTimeZone) GetZone(p Point) (tzid []string, err error) {
 	return z.getClosestZone(PointToOrb(p))
 }
 
-func distanceFrom(p1, p2 orb.Point) float64 {
-	d0 := (p1[0] - p2[0])
-	d1 := (p1[1] - p2[1])
-	return math.Sqrt(d0*d0 + d1*d1)
-}
-
 func (z *localTimeZone) getClosestZone(point orb.Point) (tzid []string, err error) {
 	mindist := math.Inf(1)
 	var winner string
 	for id, v := range *z.centerCache {
 		for _, p := range v {
-			tmp := distanceFrom(p, point)
+			tmp := planar.Distance(p, point)
 			if tmp < mindist {
 				mindist = tmp
 				winner = id
