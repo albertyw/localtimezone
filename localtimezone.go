@@ -178,8 +178,8 @@ func getNauticalZone(point Point) (tzid []string, err error) {
 func (z *localTimeZone) buildCenterCache() {
 	centerCache := make(centers)
 	for _, v := range z.orbData.Features {
-		tzid, ok := v.Properties["tzid"].(string)
-		if !ok || tzid == "" {
+		tzid := v.Properties.MustString("tzid")
+		if tzid == "" {
 			continue
 		}
 		geoType := v.Geometry.GeoJSONType()
