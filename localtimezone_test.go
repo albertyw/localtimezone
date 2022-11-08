@@ -4,7 +4,31 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+
+	"github.com/paulmach/orb"
 )
+
+func TestPointFromOrb(t *testing.T) {
+	p1 := orb.Point{1, 2}
+	p2 := PointFromOrb(p1)
+	if p2.Lon != p1[0] {
+		t.Errorf("expected point longitude %v; got %v", p1[0], p2.Lon)
+	}
+	if p2.Lat != p1[1] {
+		t.Errorf("expected point latitude %v; got %v", p1[1], p2.Lat)
+	}
+}
+
+func TestPointToOrb(t *testing.T) {
+	p1 := Point{Lon: 1, Lat: 2}
+	p2 := PointToOrb(p1)
+	if p2[0] != p1.Lon {
+		t.Errorf("expected point longitude %v; got %v", p1.Lon, p2[0])
+	}
+	if p2[1] != p1.Lat {
+		t.Errorf("expected point latitude %v; got %v", p1.Lat, p2[1])
+	}
+}
 
 func TestParallelNewLocalTimeZone(t *testing.T) {
 	t.Parallel()

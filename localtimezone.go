@@ -61,6 +61,16 @@ type Point struct {
 	Lat float64
 }
 
+// PointFromOrb converts an orb Point into an internal Point
+func PointFromOrb(p orb.Point) Point {
+	return Point{Lon: p[0], Lat: p[1]}
+}
+
+// PointToOrb converts an internal Point to an orb Point
+func PointToOrb(p Point) orb.Point {
+	return orb.Point{p.Lon, p.Lat}
+}
+
 // LocalTimeZone is a client for looking up time zones by Points
 type LocalTimeZone interface {
 	GetZone(p Point) (tzid []string, err error)
@@ -192,7 +202,7 @@ func (z *localTimeZone) buildCenterCache() {
 		for _, polygon := range multiPolygon {
 			for _, ring := range polygon {
 				point, _ := planar.CentroidArea(ring)
-				centerCache[tzid] = append(centerCache[tzid], Point{point[0], point[1]})
+				centerCache[tzid] = append(centerCache[tzid], PointFromOrb(point))
 			}
 		}
 	}
