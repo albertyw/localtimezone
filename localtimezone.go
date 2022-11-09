@@ -193,6 +193,7 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	z.tzdata = &collection
 	err := json.ConfigFastest.NewDecoder(r).Decode(&z.tzdata)
 	if err != nil {
+		z.mu.Unlock()
 		return err
 	}
 	go func() {
