@@ -68,6 +68,11 @@ func PointToOrb(p Point) orb.Point {
 	return orb.Point{p.Lon, p.Lat}
 }
 
+func init() {
+	// Set a faster json unmarshaller
+	geojson.CustomJSONUnmarshaler = json.ConfigFastest
+}
+
 // LocalTimeZone is a client for looking up time zones by Points
 type LocalTimeZone interface {
 	GetZone(p Point) (tzid []string, err error)
@@ -206,7 +211,6 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 
 	var buf bytes.Buffer
 	buf.ReadFrom(r)
-	geojson.CustomJSONUnmarshaler = json.ConfigFastest
 	orbData, err := geojson.UnmarshalFeatureCollection(buf.Bytes())
 	if err != nil {
 		z.mu.Unlock()
