@@ -123,20 +123,20 @@ func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
 	}
 	z.mu.RLock()
 	defer z.mu.RUnlock()
-	var id string
-	for _, v := range z.tzdata.Features {
-		if v.Properties.Tzid == "" {
+	for _, v := range z.orbData.Features {
+		id := v.Properties.MustString("tzid")
+		if id == "" {
 			continue
 		}
-		id = v.Properties.Tzid
-		polys := v.Geometry.Coordinates
-		bboxes := v.Geometry.BoundingBoxes
-		for i := 0; i < len(polys); i++ {
-			//Check bounding box first
-			if !inBoundingBox(bboxes[i], p) {
-				continue
+		geoType := v.Geometry.GeoJSONType()
+		if geoType == "Polygon" {
+			polygon := v.Geometry.(orb.Polygon)
+			if planar.PolygonContains(polygon, p) {
+				tzid = append(tzid, id)
 			}
-			if polygon(polys[i]).contains(p) {
+		} else if geoType == "MultiPolygon" {
+			multiPolygon := v.Geometry.(orb.MultiPolygon)
+			if planar.MultiPolygonContains(multiPolygon, p) {
 				tzid = append(tzid, id)
 			}
 		}

@@ -2,8 +2,6 @@ package localtimezone
 
 import (
 	"math"
-
-	"github.com/paulmach/orb"
 )
 
 func getBoundingBox(points []Point) []Point {
@@ -29,17 +27,4 @@ func getBoundingBox(points []Point) []Point {
 		{math.Min(minX, maxX), math.Min(minY, maxY)},
 		{math.Max(minX, maxX), math.Max(minY, maxY)},
 	}
-}
-
-func inBoundingBox(box []Point, point orb.Point) bool {
-
-	if point[1] < box[0].Lat || box[1].Lat < point[1] {
-		return false
-	}
-
-	if point[0] < box[0].Lon || box[1].Lon < point[0] {
-		return false
-	}
-
-	return true
 }
