@@ -78,7 +78,6 @@ type LocalTimeZone interface {
 
 type centers map[string][]orb.Point
 type localTimeZone struct {
-	tzdata      *FeatureCollection
 	orbData     *geojson.FeatureCollection
 	centerCache *centers
 	mu          sync.RWMutex
@@ -209,16 +208,7 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	z.mu.Lock()
 
 	var buf bytes.Buffer
-	tee := io.TeeReader(r, &buf)
-
-	collection := FeatureCollection{}
-	z.tzdata = &collection
-	err := json.ConfigFastest.NewDecoder(tee).Decode(&z.tzdata)
-	if err != nil {
-		z.mu.Unlock()
-		return err
-	}
-
+	buf.ReadFrom(r)
 	geojson.CustomJSONUnmarshaler = json.ConfigFastest
 	orbData, err := geojson.UnmarshalFeatureCollection(buf.Bytes())
 	if err != nil {
