@@ -28,6 +28,9 @@ import (
 	"sync"
 
 	json "github.com/json-iterator/go"
+	"github.com/paulmach/orb"
+	"github.com/paulmach/orb/geojson"
+	"github.com/paulmach/orb/planar"
 )
 
 // TZShapeFile is the data containing geographic shapes for timezone borders.
@@ -46,9 +49,6 @@ var MockTZShapeFile []byte
 // MockTimeZone is the timezone that is always returned from the NewMockLocalTimeZone client
 const MockTimeZone = "America/Los_Angeles"
 
-// ErrNoZoneFound is returned when a zone for the given point is not found in the shapefile
-var ErrNoZoneFound = errors.New("no corresponding zone found in shapefile")
-
 // ErrOutOfRange is returned when latitude exceeds 90 degrees or longitude exceeds 180 degrees
 var ErrOutOfRange = errors.New("point's coordinates out of range")
 
@@ -58,14 +58,29 @@ type Point struct {
 	Lat float64
 }
 
+// PointFromOrb converts an orb Point into an internal Point
+func PointFromOrb(p orb.Point) Point {
+	return Point{Lon: p[0], Lat: p[1]}
+}
+
+// PointToOrb converts an internal Point to an orb Point
+func PointToOrb(p Point) orb.Point {
+	return orb.Point{p.Lon, p.Lat}
+}
+
+func init() {
+	// Set a faster json unmarshaller
+	geojson.CustomJSONUnmarshaler = json.ConfigFastest
+}
+
 // LocalTimeZone is a client for looking up time zones by Points
 type LocalTimeZone interface {
 	GetZone(p Point) (tzid []string, err error)
 }
 
-type centers map[string][]Point
+type centers map[string][]orb.Point
 type localTimeZone struct {
-	tzdata      *FeatureCollection
+	orbData     *geojson.FeatureCollection
 	centerCache *centers
 	mu          sync.RWMutex
 }
@@ -102,26 +117,27 @@ func (z *localTimeZone) load(shapeFile []byte) error {
 }
 
 // GetZone returns a slice of strings containing time zone id's for a given Point
-func (z *localTimeZone) GetZone(p Point) (tzid []string, err error) {
-	if p.Lon > 180 || p.Lon < -180 || p.Lat > 90 || p.Lat < -90 {
+func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
+	p := PointToOrb(point)
+	if p[0] > 180 || p[0] < -180 || p[1] > 90 || p[1] < -90 {
 		return nil, ErrOutOfRange
 	}
 	z.mu.RLock()
 	defer z.mu.RUnlock()
-	var id string
-	for _, v := range z.tzdata.Features {
-		if v.Properties.Tzid == "" {
+	for _, v := range z.orbData.Features {
+		id := v.Properties.MustString("tzid")
+		if id == "" {
 			continue
 		}
-		id = v.Properties.Tzid
-		polys := v.Geometry.Coordinates
-		bboxes := v.Geometry.BoundingBoxes
-		for i := 0; i < len(polys); i++ {
-			//Check bounding box first
-			if !inBoundingBox(bboxes[i], &p) {
-				continue
+		geoType := v.Geometry.GeoJSONType()
+		if geoType == "Polygon" {
+			polygon := v.Geometry.(orb.Polygon)
+			if planar.PolygonContains(polygon, p) {
+				tzid = append(tzid, id)
 			}
-			if polygon(polys[i]).contains(&p) {
+		} else if geoType == "MultiPolygon" {
+			multiPolygon := v.Geometry.(orb.MultiPolygon)
+			if planar.MultiPolygonContains(multiPolygon, p) {
 				tzid = append(tzid, id)
 			}
 		}
@@ -132,18 +148,12 @@ func (z *localTimeZone) GetZone(p Point) (tzid []string, err error) {
 	return z.getClosestZone(p)
 }
 
-func distanceFrom(p1, p2 Point) float64 {
-	d0 := (p1.Lon - p2.Lon)
-	d1 := (p1.Lat - p2.Lat)
-	return math.Sqrt(d0*d0 + d1*d1)
-}
-
-func (z *localTimeZone) getClosestZone(point Point) (tzid []string, err error) {
+func (z *localTimeZone) getClosestZone(point orb.Point) (tzid []string, err error) {
 	mindist := math.Inf(1)
 	var winner string
 	for id, v := range *z.centerCache {
 		for _, p := range v {
-			tmp := distanceFrom(p, point)
+			tmp := planar.Distance(p, point)
 			if tmp < mindist {
 				mindist = tmp
 				winner = id
@@ -157,14 +167,14 @@ func (z *localTimeZone) getClosestZone(point Point) (tzid []string, err error) {
 	return append(tzid, winner), nil
 }
 
-func getNauticalZone(point Point) (tzid []string, err error) {
-	z := point.Lon / 7.5
+func getNauticalZone(point orb.Point) (tzid []string, err error) {
+	z := point[0] / 7.5
 	z = (math.Abs(z) + 1) / 2
 	z = math.Floor(z)
 	if z == 0 {
 		return append(tzid, "Etc/GMT"), nil
 	}
-	if point.Lon < 0 {
+	if point[0] < 0 {
 		return append(tzid, fmt.Sprintf("Etc/GMT+%.f", z)), nil
 	}
 	return append(tzid, fmt.Sprintf("Etc/GMT-%.f", z)), nil
@@ -173,14 +183,23 @@ func getNauticalZone(point Point) (tzid []string, err error) {
 // BuildCenterCache builds centers for polygons
 func (z *localTimeZone) buildCenterCache() {
 	centerCache := make(centers)
-	var tzid string
-	for _, v := range z.tzdata.Features {
-		if v.Properties.Tzid == "" {
+	for _, v := range z.orbData.Features {
+		tzid := v.Properties.MustString("tzid")
+		if tzid == "" {
 			continue
 		}
-		tzid = v.Properties.Tzid
-		for _, poly := range v.Geometry.Coordinates {
-			centerCache[tzid] = append(centerCache[tzid], polygon(poly).centroid())
+		geoType := v.Geometry.GeoJSONType()
+		var multiPolygon orb.MultiPolygon
+		if geoType == "Polygon" {
+			multiPolygon = []orb.Polygon{v.Geometry.(orb.Polygon)}
+		} else if geoType == "MultiPolygon" {
+			multiPolygon = v.Geometry.(orb.MultiPolygon)
+		}
+		for _, polygon := range multiPolygon {
+			for _, ring := range polygon {
+				point, _ := planar.CentroidArea(ring)
+				centerCache[tzid] = append(centerCache[tzid], point)
+			}
 		}
 	}
 	z.centerCache = &centerCache
@@ -189,13 +208,16 @@ func (z *localTimeZone) buildCenterCache() {
 // LoadGeoJSON loads a custom GeoJSON shapefile from a Reader
 func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	z.mu.Lock()
-	collection := FeatureCollection{}
-	z.tzdata = &collection
-	err := json.ConfigFastest.NewDecoder(r).Decode(&z.tzdata)
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	orbData, err := geojson.UnmarshalFeatureCollection(buf.Bytes())
 	if err != nil {
 		z.mu.Unlock()
 		return err
 	}
+	z.orbData = orbData
+
 	go func() {
 		defer z.mu.Unlock()
 		z.buildCenterCache()
