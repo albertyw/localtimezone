@@ -124,24 +124,35 @@ func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
 	}
 	z.mu.RLock()
 	defer z.mu.RUnlock()
+	var wg sync.WaitGroup
+	var tzidWriter sync.Mutex
 	for _, v := range z.orbData.Features {
-		id := v.Properties.MustString("tzid")
-		if id == "" {
-			continue
-		}
-		geoType := v.Geometry.GeoJSONType()
-		if geoType == "Polygon" {
-			polygon := v.Geometry.(orb.Polygon)
-			if planar.PolygonContains(polygon, p) {
-				tzid = append(tzid, id)
+		wg.Add(1)
+		go func(v *geojson.Feature) {
+			defer wg.Done()
+			id := v.Properties.MustString("tzid")
+			if id == "" {
+				return
 			}
-		} else if geoType == "MultiPolygon" {
-			multiPolygon := v.Geometry.(orb.MultiPolygon)
-			if planar.MultiPolygonContains(multiPolygon, p) {
-				tzid = append(tzid, id)
+			geoType := v.Geometry.GeoJSONType()
+			if geoType == "Polygon" {
+				polygon := v.Geometry.(orb.Polygon)
+				if planar.PolygonContains(polygon, p) {
+					tzidWriter.Lock()
+					tzid = append(tzid, id)
+					tzidWriter.Unlock()
+				}
+			} else if geoType == "MultiPolygon" {
+				multiPolygon := v.Geometry.(orb.MultiPolygon)
+				if planar.MultiPolygonContains(multiPolygon, p) {
+					tzidWriter.Lock()
+					tzid = append(tzid, id)
+					tzidWriter.Unlock()
+				}
 			}
-		}
+		}(v)
 	}
+	wg.Wait()
 	if len(tzid) > 0 {
 		return tzid, nil
 	}
