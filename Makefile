@@ -9,6 +9,10 @@ test:
 	gofmt -e -l -d -s .
 	go mod tidy
 
+.PHONY:cover
+cover: test
+	go tool cover -func=coverage.txt
+
 .PHONY:benchmark
 benchmark:
 	go test -bench=.
