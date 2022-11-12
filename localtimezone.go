@@ -139,16 +139,17 @@ func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
 			if !z.boundCache[id].Contains(p) {
 				return
 			}
-			geoType := v.Geometry.GeoJSONType()
-			if geoType == "Polygon" {
-				polygon := v.Geometry.(orb.Polygon)
+			polygon, ok := v.Geometry.(orb.Polygon)
+			if ok {
 				if planar.PolygonContains(polygon, p) {
 					tzidWriter.Lock()
 					tzid = append(tzid, id)
 					tzidWriter.Unlock()
 				}
-			} else if geoType == "MultiPolygon" {
-				multiPolygon := v.Geometry.(orb.MultiPolygon)
+				return
+			}
+			multiPolygon, ok := v.Geometry.(orb.MultiPolygon)
+			if ok {
 				if planar.MultiPolygonContains(multiPolygon, p) {
 					tzidWriter.Lock()
 					tzid = append(tzid, id)
@@ -211,12 +212,12 @@ func (z *localTimeZone) buildCache() {
 			if tzid == "" {
 				return
 			}
-			geoType := v.Geometry.GeoJSONType()
 			var multiPolygon orb.MultiPolygon
-			if geoType == "Polygon" {
-				multiPolygon = []orb.Polygon{v.Geometry.(orb.Polygon)}
-			} else if geoType == "MultiPolygon" {
-				multiPolygon = v.Geometry.(orb.MultiPolygon)
+			polygon, ok := v.Geometry.(orb.Polygon)
+			if ok {
+				multiPolygon = []orb.Polygon{polygon}
+			} else {
+				multiPolygon, _ = v.Geometry.(orb.MultiPolygon)
 			}
 			var tzCenters []orb.Point
 			for _, polygon := range multiPolygon {
