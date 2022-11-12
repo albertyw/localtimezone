@@ -82,6 +82,7 @@ type LocalTimeZone interface {
 type centers map[string][]orb.Point
 type localTimeZone struct {
 	orbData     *geojson.FeatureCollection
+	boundCache  map[string]orb.Bound
 	centerCache *centers
 	mu          sync.RWMutex
 }
@@ -133,6 +134,9 @@ func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
 			defer wg.Done()
 			id := v.Properties.MustString("tzid")
 			if id == "" {
+				return
+			}
+			if !z.boundCache[id].Contains(p) {
 				return
 			}
 			geoType := v.Geometry.GeoJSONType()
@@ -196,6 +200,7 @@ func getNauticalZone(point orb.Point) (tzid []string, err error) {
 // BuildCenterCache builds centers for polygons
 func (z *localTimeZone) buildCenterCache() {
 	centerCache := make(centers)
+	z.boundCache = make(map[string]orb.Bound)
 	var wg sync.WaitGroup
 	var m sync.Mutex
 	for _, v := range z.orbData.Features {
@@ -220,8 +225,10 @@ func (z *localTimeZone) buildCenterCache() {
 					tzCenters = append(tzCenters, point)
 				}
 			}
+			bound := v.Geometry.Bound()
 			m.Lock()
 			centerCache[tzid] = tzCenters
+			z.boundCache[tzid] = bound
 			m.Unlock()
 		}(v)
 	}
