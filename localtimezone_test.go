@@ -2,6 +2,7 @@ package localtimezone
 
 import (
 	"bytes"
+	"compress/gzip"
 	"fmt"
 	"sync"
 	"testing"
@@ -28,6 +29,31 @@ func TestPointToOrb(t *testing.T) {
 	}
 	if p2[1] != p1.Lat {
 		t.Errorf("expected point latitude %v; got %v", p1.Lat, p2[1])
+	}
+}
+
+func TestLoadError(t *testing.T) {
+	client, err := NewLocalTimeZone()
+	if err != nil {
+		t.Errorf("error when initializing client: %v", err)
+	}
+	c := client.(*localTimeZone)
+
+	shapeFile := []byte("asdf")
+	err = c.load(shapeFile)
+	if err == nil {
+		t.Errorf("expected error when loading malformed data")
+	}
+
+	shapeFile2 := bytes.NewBufferString("")
+	writer := gzip.NewWriter(shapeFile2)
+	_, err = writer.Write([]byte("asdf"))
+	if err != nil {
+		t.Errorf("cannot write to gzip, got error %v", err)
+	}
+	err = c.load(shapeFile2.Bytes())
+	if err == nil {
+		t.Errorf("expected error when loading malformed data")
 	}
 }
 
