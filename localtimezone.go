@@ -197,25 +197,36 @@ func getNauticalZone(point orb.Point) (tzid []string, err error) {
 // BuildCenterCache builds centers for polygons
 func (z *localTimeZone) buildCenterCache() {
 	centerCache := make(centers)
+	var wg sync.WaitGroup
+	var m sync.Mutex
 	for _, v := range z.orbData.Features {
-		tzid := v.Properties.MustString("tzid")
-		if tzid == "" {
-			continue
-		}
-		geoType := v.Geometry.GeoJSONType()
-		var multiPolygon orb.MultiPolygon
-		if geoType == "Polygon" {
-			multiPolygon = []orb.Polygon{v.Geometry.(orb.Polygon)}
-		} else if geoType == "MultiPolygon" {
-			multiPolygon = v.Geometry.(orb.MultiPolygon)
-		}
-		for _, polygon := range multiPolygon {
-			for _, ring := range polygon {
-				point, _ := planar.CentroidArea(ring)
-				centerCache[tzid] = append(centerCache[tzid], point)
+		wg.Add(1)
+		go func(v *geojson.Feature) {
+			defer wg.Done()
+			tzid := v.Properties.MustString("tzid")
+			if tzid == "" {
+				return
 			}
-		}
+			geoType := v.Geometry.GeoJSONType()
+			var multiPolygon orb.MultiPolygon
+			if geoType == "Polygon" {
+				multiPolygon = []orb.Polygon{v.Geometry.(orb.Polygon)}
+			} else if geoType == "MultiPolygon" {
+				multiPolygon = v.Geometry.(orb.MultiPolygon)
+			}
+			var tzCenters []orb.Point
+			for _, polygon := range multiPolygon {
+				for _, ring := range polygon {
+					point, _ := planar.CentroidArea(ring)
+					tzCenters = append(tzCenters, point)
+				}
+			}
+			m.Lock()
+			centerCache[tzid] = tzCenters
+			m.Unlock()
+		}(v)
 	}
+	wg.Wait()
 	z.centerCache = &centerCache
 }
 
