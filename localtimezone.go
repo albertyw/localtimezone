@@ -245,6 +245,10 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	buf.ReadFrom(r)
 	orbData, err := geojson.UnmarshalFeatureCollection(buf.Bytes())
 	if err != nil {
+		z.orbData = &geojson.FeatureCollection{}
+		centerCache := make(centers)
+		z.centerCache = &centerCache
+		z.boundCache = make(map[string]orb.Bound)
 		z.mu.Unlock()
 		return err
 	}
