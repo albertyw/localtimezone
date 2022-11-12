@@ -1,6 +1,7 @@
 package localtimezone
 
 import (
+	"bytes"
 	"fmt"
 	"sync"
 	"testing"
@@ -274,5 +275,63 @@ func TestOutOfRange(t *testing.T) {
 				t.Errorf("expected error %v got %v", tc.err, err)
 			}
 		})
+	}
+}
+
+func TestLoadGeoJSONMalformed(t *testing.T) {
+	data := "{"
+	reader := bytes.NewBufferString(data)
+	client, err := NewLocalTimeZone()
+	if err != nil {
+		t.Errorf("cannot initialize client, got %v", err)
+	}
+	c := client.(*localTimeZone)
+	err = c.LoadGeoJSON(reader)
+	if err == nil {
+		t.Errorf("expected error, got %v", err)
+	}
+	unlocked := c.mu.TryLock()
+	if !unlocked {
+		t.Errorf("expected lock to be released")
+	}
+	defer c.mu.Unlock()
+
+	if len(c.orbData.Features) != 0 {
+		t.Errorf("orbData not reset")
+	}
+	if len(c.boundCache) != 0 {
+		t.Errorf("boundCache not reset")
+	}
+	if len(*c.centerCache) != 0 {
+		t.Errorf("centerCache not reset")
+	}
+}
+
+func TestLoadOverwrite(t *testing.T) {
+	client, err := NewLocalTimeZone()
+	if err != nil {
+		t.Errorf("cannot initialize client, got %v", err)
+	}
+	c := client.(*localTimeZone)
+	c.mu.RLock()
+	lenOrbData := len(c.orbData.Features)
+	lenBoundCache := len(c.boundCache)
+	lenCenterCache := len(*c.centerCache)
+	c.mu.RUnlock()
+
+	err = c.load(MockTZShapeFile)
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if err != nil {
+		t.Errorf("cannot switch client to mock data, got %v", err)
+	}
+	if len(c.orbData.Features) >= lenOrbData {
+		t.Errorf("orbData not overwritten by loading new data")
+	}
+	if len(c.boundCache) >= lenBoundCache {
+		t.Errorf("boundCache not overwritten by loading new data")
+	}
+	if len(*c.centerCache) >= lenCenterCache {
+		t.Errorf("centerCache not overwritten by loading new data")
 	}
 }
