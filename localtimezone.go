@@ -59,13 +59,13 @@ type Point struct {
 	Lat float64
 }
 
-// PointFromOrb converts an orb Point into an internal Point
-func PointFromOrb(p orb.Point) Point {
+// pointFromOrb converts an orb Point into an internal Point
+func pointFromOrb(p orb.Point) Point {
 	return Point{Lon: p[0], Lat: p[1]}
 }
 
-// PointToOrb converts an internal Point to an orb Point
-func PointToOrb(p Point) orb.Point {
+// pointToOrb converts an internal Point to an orb Point
+func pointToOrb(p Point) orb.Point {
 	return orb.Point{p.Lon, p.Lat}
 }
 
@@ -119,7 +119,7 @@ func (z *localTimeZone) load(shapeFile []byte) error {
 
 // GetZone returns a slice of strings containing time zone id's for a given Point
 func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
-	p := PointToOrb(point)
+	p := pointToOrb(point)
 	if p[0] > 180 || p[0] < -180 || p[1] > 90 || p[1] < -90 {
 		return nil, ErrOutOfRange
 	}

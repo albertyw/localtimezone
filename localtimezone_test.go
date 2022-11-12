@@ -10,7 +10,7 @@ import (
 
 func TestPointFromOrb(t *testing.T) {
 	p1 := orb.Point{1, 2}
-	p2 := PointFromOrb(p1)
+	p2 := pointFromOrb(p1)
 	if p2.Lon != p1[0] {
 		t.Errorf("expected point longitude %v; got %v", p1[0], p2.Lon)
 	}
@@ -21,7 +21,7 @@ func TestPointFromOrb(t *testing.T) {
 
 func TestPointToOrb(t *testing.T) {
 	p1 := Point{Lon: 1, Lat: 2}
-	p2 := PointToOrb(p1)
+	p2 := pointToOrb(p1)
 	if p2[0] != p1.Lon {
 		t.Errorf("expected point longitude %v; got %v", p1.Lon, p2[0])
 	}
@@ -192,7 +192,7 @@ func BenchmarkZones(b *testing.B) {
 					if n > b.N {
 						break Loop
 					}
-					_, err := z.GetZone(PointFromOrb(v[i]))
+					_, err := z.GetZone(pointFromOrb(v[i]))
 					if err != nil {
 						b.Errorf("point %v did not return a zone", v[i])
 					}
