@@ -197,7 +197,7 @@ func getNauticalZone(point orb.Point) (tzid []string, err error) {
 	return append(tzid, fmt.Sprintf("Etc/GMT-%.f", z)), nil
 }
 
-// BuildCenterCache builds centers for polygons
+// buildCache builds centers for polygons
 func (z *localTimeZone) buildCache() {
 	centerCache := make(centers)
 	z.boundCache = make(map[string]orb.Bound)
