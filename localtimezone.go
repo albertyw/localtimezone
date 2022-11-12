@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"sort"
 	"sync"
 
 	json "github.com/json-iterator/go"
@@ -154,6 +155,7 @@ func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
 	}
 	wg.Wait()
 	if len(tzid) > 0 {
+		sort.Strings(tzid)
 		return tzid, nil
 	}
 	return z.getClosestZone(p)
