@@ -77,6 +77,7 @@ func init() {
 // LocalTimeZone is a client for looking up time zones by Points
 type LocalTimeZone interface {
 	GetZone(p Point) (tzid []string, err error)
+	LoadGeoJSON(io.Reader) error
 }
 
 type centers map[string][]orb.Point
@@ -86,6 +87,8 @@ type localTimeZone struct {
 	centerCache *centers
 	mu          sync.RWMutex
 }
+
+var _ LocalTimeZone = &localTimeZone{}
 
 // NewLocalTimeZone creates a new LocalTimeZone with real timezone data
 // The client is threadsafe
