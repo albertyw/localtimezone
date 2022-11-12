@@ -198,7 +198,7 @@ func getNauticalZone(point orb.Point) (tzid []string, err error) {
 }
 
 // BuildCenterCache builds centers for polygons
-func (z *localTimeZone) buildCenterCache() {
+func (z *localTimeZone) buildCache() {
 	centerCache := make(centers)
 	z.boundCache = make(map[string]orb.Bound)
 	var wg sync.WaitGroup
@@ -251,7 +251,7 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 
 	go func() {
 		defer z.mu.Unlock()
-		z.buildCenterCache()
+		z.buildCache()
 	}()
 	return nil
 }
