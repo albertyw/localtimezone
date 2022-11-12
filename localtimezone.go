@@ -164,7 +164,6 @@ func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
 func (z *localTimeZone) getClosestZone(point orb.Point) (tzid []string, err error) {
 	mindist := math.Inf(1)
 	var winner string
-	// TODO: parallelize
 	for id, v := range *z.centerCache {
 		for _, p := range v {
 			tmp := planar.Distance(p, point)
