@@ -1,6 +1,15 @@
 CHANGELOG
 =========
 
+v3.0.0
+------
+
+ - Remove all geo-related types including `FeatureCollection`, `Feature`, `Geometry`
+ - Remove unused `ErrNoZoneFound`
+ - Remove all internal geo logic and use github.com/paulmach/orb (previously only used for generating map data)
+ - Improved performance through parallelization
+
+
 v2.1.4
 ------
 

@@ -1,8 +1,8 @@
 # github.com/albertyw/localtimezone
 
 [![Build Status](https://drone.albertyw.com/api/badges/albertyw/localtimezone/status.svg)](https://drone.albertyw.com/albertyw/localtimezone)
-[![Go Documentation](https://godocs.io/github.com/albertyw/localtimezone/v2?status.svg)](https://godocs.io/github.com/albertyw/localtimezone/v2)
-[![Go Report Card](https://goreportcard.com/badge/github.com/albertyw/localtimezone/v2)](https://goreportcard.com/report/github.com/albertyw/localtimezone/v2)
+[![Go Documentation](https://godocs.io/github.com/albertyw/localtimezone/v3?status.svg)](https://godocs.io/github.com/albertyw/localtimezone/v3)
+[![Go Report Card](https://goreportcard.com/badge/github.com/albertyw/localtimezone/v3)](https://goreportcard.com/report/github.com/albertyw/localtimezone/v3)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![codecov](https://codecov.io/gh/albertyw/localtimezone/branch/master/graph/badge.svg?token=PUAW91J75K)](https://codecov.io/gh/albertyw/localtimezone)
 
@@ -12,7 +12,7 @@ This is a fork of [github.com/ugjka/go-tz](https://github.com/ugjka/go-tz).
 ## Usage / Example
 
 ```go
-import localtimezone "github.com/albertyw/localtimezone/v2"
+import localtimezone "github.com/albertyw/localtimezone/v3"
 
 // Loading Zone for Line Islands, Kiritimati
 tz, err := localtimezone.NewLocalTimeZone()
