@@ -14,3 +14,19 @@ steps:
       - ./codecov
     environment:
       CODECOV_TOKEN: 478ec348-c903-47c3-bbe9-c96c4af8c6f7
+trigger:
+  event:
+    exclude:
+      - cron
+
+---
+kind: pipeline
+type: docker
+name: tzdata-check
+  - name: Check TZData Freshness
+    image: golang:1.19
+    commands:
+      - make test
+trigger:
+  cron:
+    - tzdata-check
