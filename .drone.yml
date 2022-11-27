@@ -23,6 +23,8 @@ trigger:
 kind: pipeline
 type: docker
 name: tzdata-check
+
+steps:
   - name: Check TZData Freshness
     image: golang:1.19
     commands:
