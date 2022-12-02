@@ -21,10 +21,13 @@ func generateTestCases() ([]TimezoneTestCase, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
 
 	reader := csv.NewReader(f)
 	rawData, err := reader.ReadAll()
+	if err != nil {
+		return nil, err
+	}
+	err = f.Close()
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +108,10 @@ func BenchmarkGetZone(b *testing.B) {
 					Lon: tc.Lon,
 					Lat: tc.Lat,
 				}
-				client.GetZone(point)
+				_, err = client.GetZone(point)
+				if err != nil {
+					b.Errorf("point %v did not return a zone", point)
+				}
 				n++
 			}
 		}
