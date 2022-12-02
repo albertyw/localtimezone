@@ -115,9 +115,9 @@ func (z *localTimeZone) load(shapeFile []byte) error {
 	if err != nil {
 		return err
 	}
-	defer g.Close()
 
 	err = z.LoadGeoJSON(g)
+	_ = g.Close()
 	if err != nil {
 		return err
 	}
@@ -248,7 +248,10 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	z.mu.Lock()
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, err := buf.ReadFrom(r)
+	if err != nil {
+		return err
+	}
 	orbData, err := geojson.UnmarshalFeatureCollection(buf.Bytes())
 	if err != nil {
 		z.orbData = &geojson.FeatureCollection{}
