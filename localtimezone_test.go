@@ -247,7 +247,10 @@ func BenchmarkZones(b *testing.B) {
 				if n > b.N {
 					break Loop
 				}
-				z.GetZone(tc.point)
+				_, err := z.GetZone(tc.point)
+				if err != nil {
+					b.Errorf("point %v did not return a zone", tc.point)
+				}
 				n++
 			}
 
