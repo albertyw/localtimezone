@@ -33,8 +33,11 @@ func getMostCurrentRelease() (version string, url string, err error) {
 	if err != nil {
 		return "", "", err
 	}
-	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", err
+	}
+	err = resp.Body.Close()
 	if err != nil {
 		return "", "", err
 	}
@@ -71,12 +74,15 @@ func getGeoJSON(releaseURL string) ([]byte, error) {
 	if err != nil {
 		log.Fatalf("Error: could not download tz shapefile: %v\n", err)
 	}
-	defer resp.Body.Close()
 
 	buffer := bytes.NewBuffer([]byte{})
 	_, err = io.Copy(buffer, resp.Body)
 	if err != nil {
 		log.Printf("Download failed: %v\n", err)
+		return nil, err
+	}
+	err = resp.Body.Close()
+	if err != nil {
 		return nil, err
 	}
 
@@ -165,11 +171,14 @@ func writeVersion(release string) error {
 		log.Printf("Error: could not create version.go: %v", err)
 		return err
 	}
-	defer outfile.Close()
 
 	_, err = outfile.WriteString(content)
 	if err != nil {
 		log.Printf("Error: could not write content: %v", err)
+		return err
+	}
+	err = outfile.Close()
+	if err != nil {
 		return err
 	}
 	return nil
