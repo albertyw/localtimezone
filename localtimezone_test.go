@@ -203,6 +203,18 @@ func TestMockLocalTimeZone(t *testing.T) {
 	}
 }
 
+func TestMockLocalTimeZonePanic(t *testing.T) {
+	tempMockTZShapeFile := MockTZShapeFile
+	MockTZShapeFile = []byte("asdf")
+	defer func() {
+		MockTZShapeFile = tempMockTZShapeFile
+		if r := recover(); r == nil {
+			t.Errorf("expected a panic; got no panic")
+		}
+	}()
+	NewMockLocalTimeZone()
+}
+
 func BenchmarkZones(b *testing.B) {
 	zInterface, err := NewLocalTimeZone()
 	if err != nil {

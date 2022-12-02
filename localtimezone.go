@@ -103,7 +103,10 @@ func NewLocalTimeZone() (LocalTimeZone, error) {
 // The client is threadsafe
 func NewMockLocalTimeZone() LocalTimeZone {
 	z := localTimeZone{}
-	z.load(MockTZShapeFile)
+	err := z.load(MockTZShapeFile)
+	if err != nil {
+		panic(err)
+	}
 	return &z
 }
 
