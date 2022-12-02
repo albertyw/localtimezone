@@ -37,7 +37,10 @@ func TestLoadError(t *testing.T) {
 	if err != nil {
 		t.Errorf("error when initializing client: %v", err)
 	}
-	c := client.(*localTimeZone)
+	c, ok := client.(*localTimeZone)
+	if !ok {
+		t.Errorf("error when initializing client")
+	}
 
 	shapeFile := []byte("asdf")
 	err = c.load(shapeFile)
@@ -220,7 +223,10 @@ func BenchmarkZones(b *testing.B) {
 	if err != nil {
 		b.Errorf("cannot initialize timezone client: %v", err)
 	}
-	z := zInterface.(*localTimeZone)
+	z, ok := zInterface.(*localTimeZone)
+	if !ok {
+		b.Errorf("cannot initialize timezone client")
+	}
 	z.mu.RLock()
 	z.mu.RUnlock() //lint:ignore SA2001 Make sure client has loaded
 	b.Run("polygon centers", func(b *testing.B) {
@@ -326,7 +332,10 @@ func TestLoadGeoJSONMalformed(t *testing.T) {
 	if err != nil {
 		t.Errorf("cannot initialize client, got %v", err)
 	}
-	c := client.(*localTimeZone)
+	c, ok := client.(*localTimeZone)
+	if !ok {
+		t.Errorf("cannot initialize client")
+	}
 	err = c.LoadGeoJSON(reader)
 	if err == nil {
 		t.Errorf("expected error, got %v", err)
@@ -353,7 +362,10 @@ func TestLoadOverwrite(t *testing.T) {
 	if err != nil {
 		t.Errorf("cannot initialize client, got %v", err)
 	}
-	c := client.(*localTimeZone)
+	c, ok := client.(*localTimeZone)
+	if !ok {
+		t.Errorf("cannot initialize client")
+	}
 	c.mu.RLock()
 	lenOrbData := len(c.orbData.Features)
 	lenBoundCache := len(c.boundCache)

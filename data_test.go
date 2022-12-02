@@ -94,7 +94,10 @@ func BenchmarkGetZone(b *testing.B) {
 	if err != nil {
 		b.Errorf("cannot initialize test cases: %v", err)
 	}
-	c := client.(*localTimeZone)
+	c, ok := client.(*localTimeZone)
+	if !ok {
+		b.Errorf("cannot initialize test client")
+	}
 	c.mu.RLock()
 	c.mu.RUnlock() //lint:ignore SA2001 Make sure client has loaded
 	b.Run("city time zones", func(b *testing.B) {
