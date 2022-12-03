@@ -1,6 +1,15 @@
 CHANGELOG
 =========
 
+v3.0.1
+------
+
+ - Update tzdata from 2022f to 2022g
+ - Check all returned errors with `errcheck`
+ - Continually check for tzdata freshness
+ - Update CI configuration
+
+
 v3.0.0
 ------
 
