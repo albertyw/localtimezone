@@ -8,7 +8,12 @@ import (
 	"testing"
 
 	"github.com/paulmach/orb"
+	"go.uber.org/goleak"
 )
+
+func TestMain(m *testing.M) {
+	goleak.VerifyTestMain(m)
+}
 
 func TestPointFromOrb(t *testing.T) {
 	p1 := orb.Point{1, 2}
