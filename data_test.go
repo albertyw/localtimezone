@@ -85,6 +85,23 @@ func TestData(t *testing.T) {
 	}
 }
 
+func TestTzidPresent(t *testing.T) {
+	client, err := NewLocalTimeZone()
+	if err != nil {
+		t.Errorf("cannot initialize timezone client: %v", err)
+	}
+	z, ok := client.(*localTimeZone)
+	if !ok {
+		t.Error("error when initializing client")
+	}
+	for _, feature := range z.orbData.Features {
+		tzid := feature.Properties.MustString("tzid")
+		if tzid == "" {
+			t.Error("unexpected feature with empty tzid")
+		}
+	}
+}
+
 func BenchmarkGetZone(b *testing.B) {
 	client, err := NewLocalTimeZone()
 	if err != nil {
