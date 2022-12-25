@@ -139,9 +139,6 @@ func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
 		go func(v *geojson.Feature) {
 			defer wg.Done()
 			id := v.Properties.MustString("tzid")
-			if id == "" {
-				return
-			}
 			if !z.boundCache[id].Contains(p) {
 				return
 			}
@@ -215,9 +212,6 @@ func (z *localTimeZone) buildCache() {
 		go func(v *geojson.Feature) {
 			defer wg.Done()
 			tzid := v.Properties.MustString("tzid")
-			if tzid == "" {
-				return
-			}
 			var multiPolygon orb.MultiPolygon
 			polygon, ok := v.Geometry.(orb.Polygon)
 			if ok {
