@@ -269,6 +269,35 @@ func BenchmarkZones(b *testing.B) {
 	})
 }
 
+func BenchmarkClientInit(b *testing.B) {
+	b.Run("main client", func(b *testing.B) {
+		for n := 0; n < b.N; {
+			c, err := NewLocalTimeZone()
+			if err != nil {
+				b.Errorf("client could not initialize because of %v", err)
+			}
+			cStruct, ok := c.(*localTimeZone)
+			if !ok {
+				b.Errorf("cannot initialize timezone client")
+			}
+			cStruct.mu.RLock()
+			cStruct.mu.RUnlock() //lint:ignore SA2001 Wait for the client to load
+			n++
+		}
+	})
+	b.Run("mock client", func(b *testing.B) {
+		for n := 0; n < b.N; {
+			c := NewMockLocalTimeZone()
+			cStruct, ok := c.(*localTimeZone)
+			if !ok {
+				b.Errorf("cannot initialize timezone client")
+			}
+			cStruct.mu.RLock()
+			cStruct.mu.RUnlock() //lint:ignore SA2001 Wait for the client to load
+			n++
+		}
+	})
+}
 func TestNautical(t *testing.T) {
 	t.Parallel()
 	tt := []struct {
