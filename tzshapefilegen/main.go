@@ -123,9 +123,15 @@ func orbExec(combinedJSON []byte) ([]byte, error) {
 		log.Printf("Error: could not parse combined.json: %v\n", err)
 		return nil, err
 	}
+	features := []*geojson.Feature{}
 	for _, feature := range fc.Features {
+		if tzid := feature.Properties.MustString("tzid"); tzid == "" {
+			break
+		}
 		feature.Geometry = simplify.VisvalingamThreshold(0.0001).Simplify(feature.Geometry)
+		features = append(features, feature)
 	}
+	fc.Features = features
 	reducedJSON, err := fc.MarshalJSON()
 	if err != nil {
 		log.Printf("Error: could not marshal reduced.json: %v\n", err)
