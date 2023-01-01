@@ -208,17 +208,17 @@ func getNauticalZone(point orb.Point) (tzid []string, err error) {
 func (z *localTimeZone) buildCache() {
 	var wg sync.WaitGroup
 	var m sync.Mutex
-	for _, v := range z.orbData {
+	m.Lock()
+	for id, d := range z.tzData {
 		wg.Add(1)
-		go func(v *geojson.Feature) {
+		go func(id string, d tzData) {
 			defer wg.Done()
-			tzid := v.Properties.MustString("tzid")
 			var multiPolygon orb.MultiPolygon
-			polygon, ok := v.Geometry.(orb.Polygon)
+			polygon, ok := d.feature.Geometry.(orb.Polygon)
 			if ok {
 				multiPolygon = []orb.Polygon{polygon}
 			} else {
-				multiPolygon, _ = v.Geometry.(orb.MultiPolygon)
+				multiPolygon, _ = d.feature.Geometry.(orb.MultiPolygon)
 			}
 			var tzCenters []orb.Point
 			for _, polygon := range multiPolygon {
@@ -227,15 +227,15 @@ func (z *localTimeZone) buildCache() {
 					tzCenters = append(tzCenters, point)
 				}
 			}
-			bound := v.Geometry.Bound()
-			m.Lock()
-			d := z.tzData[tzid]
+			bound := d.feature.Geometry.Bound()
 			d.bound = bound
 			d.centers = tzCenters
-			z.tzData[tzid] = d
+			m.Lock()
+			z.tzData[id] = d
 			m.Unlock()
-		}(v)
+		}(id, d)
 	}
+	m.Unlock()
 	wg.Wait()
 }
 
