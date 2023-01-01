@@ -1,5 +1,12 @@
 SHELL := /bin/bash
 
+.PHONY:all
+all: test
+
+.PHONY:clean
+clean:
+	rm memprofile.out cpuprofile.out localtimezone.test coverage.txt || true
+
 .PHONY:install-test-deps
 install-test-deps:
 	go install honnef.co/go/tools/cmd/staticcheck@v0.3.3
