@@ -87,9 +87,8 @@ type tzData struct {
 }
 
 type localTimeZone struct {
-	orbData []*geojson.Feature
-	tzData  map[string]tzData
-	mu      sync.RWMutex
+	tzData map[string]tzData
+	mu     sync.RWMutex
 }
 
 var _ LocalTimeZone = &localTimeZone{}
@@ -250,13 +249,10 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	}
 	orbData, err := geojson.UnmarshalFeatureCollection(buf.Bytes())
 	if err != nil {
-		features := []*geojson.Feature{}
-		z.orbData = features
 		z.tzData = make(map[string]tzData)
 		z.mu.Unlock()
 		return err
 	}
-	z.orbData = orbData.Features
 	z.tzData = make(map[string]tzData)
 	for _, f := range orbData.Features {
 		tzid := f.Properties.MustString("tzid")
