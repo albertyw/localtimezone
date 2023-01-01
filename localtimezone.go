@@ -86,7 +86,7 @@ type tzData struct {
 }
 
 type localTimeZone struct {
-	orbData *geojson.FeatureCollection
+	orbData []*geojson.Feature
 	tzData  map[string]tzData
 	mu      sync.RWMutex
 }
@@ -137,7 +137,7 @@ func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
 	defer z.mu.RUnlock()
 	var wg sync.WaitGroup
 	var tzidWriter sync.Mutex
-	for _, v := range z.orbData.Features {
+	for _, v := range z.orbData {
 		wg.Add(1)
 		go func(v *geojson.Feature) {
 			defer wg.Done()
@@ -209,7 +209,7 @@ func (z *localTimeZone) buildCache() {
 	z.tzData = make(map[string]tzData)
 	var wg sync.WaitGroup
 	var m sync.Mutex
-	for _, v := range z.orbData.Features {
+	for _, v := range z.orbData {
 		wg.Add(1)
 		go func(v *geojson.Feature) {
 			defer wg.Done()
@@ -252,12 +252,13 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	}
 	orbData, err := geojson.UnmarshalFeatureCollection(buf.Bytes())
 	if err != nil {
-		z.orbData = &geojson.FeatureCollection{}
+		features := []*geojson.Feature{}
+		z.orbData = features
 		z.tzData = make(map[string]tzData)
 		z.mu.Unlock()
 		return err
 	}
-	z.orbData = orbData
+	z.orbData = orbData.Features
 
 	go func() {
 		defer z.mu.Unlock()

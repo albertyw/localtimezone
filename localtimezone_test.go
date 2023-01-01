@@ -380,7 +380,7 @@ func TestLoadGeoJSONMalformed(t *testing.T) {
 	}
 	defer c.mu.Unlock()
 
-	if len(c.orbData.Features) != 0 {
+	if len(c.orbData) != 0 {
 		t.Errorf("orbData not reset")
 	}
 	if len(c.tzData) != 0 {
@@ -398,7 +398,7 @@ func TestLoadOverwrite(t *testing.T) {
 		t.Errorf("cannot initialize client")
 	}
 	c.mu.RLock()
-	lenOrbData := len(c.orbData.Features)
+	lenOrbData := len(c.orbData)
 	lenTzData := len(c.tzData)
 	c.mu.RUnlock()
 
@@ -408,7 +408,7 @@ func TestLoadOverwrite(t *testing.T) {
 	if err != nil {
 		t.Errorf("cannot switch client to mock data, got %v", err)
 	}
-	if len(c.orbData.Features) >= lenOrbData {
+	if len(c.orbData) >= lenOrbData {
 		t.Errorf("orbData not overwritten by loading new data")
 	}
 	if len(c.tzData) >= lenTzData {
