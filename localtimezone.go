@@ -82,7 +82,8 @@ type LocalTimeZone interface {
 
 type tzData struct {
 	feature *geojson.Feature
-	bound   orb.Bound
+	polygon *orb.Polygon
+	bound   *orb.Bound
 	centers []orb.Point
 }
 
@@ -144,9 +145,8 @@ func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
 			if !d.bound.Contains(p) {
 				return
 			}
-			polygon, ok := d.feature.Geometry.(orb.Polygon)
-			if ok {
-				if planar.PolygonContains(polygon, p) {
+			if d.polygon != nil {
+				if planar.PolygonContains(*d.polygon, p) {
 					tzidWriter.Lock()
 					tzid = append(tzid, id)
 					tzidWriter.Unlock()
@@ -215,6 +215,7 @@ func (z *localTimeZone) buildCache() {
 			var multiPolygon orb.MultiPolygon
 			polygon, ok := d.feature.Geometry.(orb.Polygon)
 			if ok {
+				d.polygon = &polygon
 				multiPolygon = []orb.Polygon{polygon}
 			} else {
 				multiPolygon, _ = d.feature.Geometry.(orb.MultiPolygon)
@@ -227,7 +228,7 @@ func (z *localTimeZone) buildCache() {
 				}
 			}
 			bound := d.feature.Geometry.Bound()
-			d.bound = bound
+			d.bound = &bound
 			d.centers = tzCenters
 			m.Lock()
 			z.tzData[id] = d
