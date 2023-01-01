@@ -80,11 +80,15 @@ type LocalTimeZone interface {
 	LoadGeoJSON(io.Reader) error
 }
 
+type tzData struct {
+	bound   orb.Bound
+	centers []orb.Point
+}
+
 type localTimeZone struct {
-	orbData     *geojson.FeatureCollection
-	boundCache  map[string]orb.Bound
-	centerCache map[string][]orb.Point
-	mu          sync.RWMutex
+	orbData *geojson.FeatureCollection
+	tzData  map[string]tzData
+	mu      sync.RWMutex
 }
 
 var _ LocalTimeZone = &localTimeZone{}
@@ -138,7 +142,7 @@ func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
 		go func(v *geojson.Feature) {
 			defer wg.Done()
 			id := v.Properties.MustString("tzid")
-			if !z.boundCache[id].Contains(p) {
+			if !z.tzData[id].bound.Contains(p) {
 				return
 			}
 			polygon, ok := v.Geometry.(orb.Polygon)
@@ -171,8 +175,8 @@ func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
 func (z *localTimeZone) getClosestZone(point orb.Point) (tzid []string, err error) {
 	mindist := math.Inf(1)
 	var winner string
-	for id, v := range z.centerCache {
-		for _, p := range v {
+	for id, d := range z.tzData {
+		for _, p := range d.centers {
 			tmp := planar.Distance(p, point)
 			if tmp < mindist {
 				mindist = tmp
@@ -202,8 +206,7 @@ func getNauticalZone(point orb.Point) (tzid []string, err error) {
 
 // buildCache builds centers for polygons
 func (z *localTimeZone) buildCache() {
-	z.centerCache = make(map[string][]orb.Point)
-	z.boundCache = make(map[string]orb.Bound)
+	z.tzData = make(map[string]tzData)
 	var wg sync.WaitGroup
 	var m sync.Mutex
 	for _, v := range z.orbData.Features {
@@ -226,9 +229,12 @@ func (z *localTimeZone) buildCache() {
 				}
 			}
 			bound := v.Geometry.Bound()
+			data := tzData{
+				bound:   bound,
+				centers: tzCenters,
+			}
 			m.Lock()
-			z.centerCache[tzid] = tzCenters
-			z.boundCache[tzid] = bound
+			z.tzData[tzid] = data
 			m.Unlock()
 		}(v)
 	}
@@ -247,8 +253,7 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	orbData, err := geojson.UnmarshalFeatureCollection(buf.Bytes())
 	if err != nil {
 		z.orbData = &geojson.FeatureCollection{}
-		z.centerCache = make(map[string][]orb.Point)
-		z.boundCache = make(map[string]orb.Bound)
+		z.tzData = make(map[string]tzData)
 		z.mu.Unlock()
 		return err
 	}
