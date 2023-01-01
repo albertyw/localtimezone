@@ -137,33 +137,22 @@ func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
 	}
 	z.mu.RLock()
 	defer z.mu.RUnlock()
-	var wg sync.WaitGroup
-	var tzidWriter sync.Mutex
 	for id, d := range z.tzData {
-		wg.Add(1)
-		go func(id string, d tzData) {
-			defer wg.Done()
-			if !d.bound.Contains(p) {
-				return
+		if !d.bound.Contains(p) {
+			continue
+		}
+		if d.polygon != nil {
+			if planar.PolygonContains(*d.polygon, p) {
+				tzid = append(tzid, id)
 			}
-			if d.polygon != nil {
-				if planar.PolygonContains(*d.polygon, p) {
-					tzidWriter.Lock()
-					tzid = append(tzid, id)
-					tzidWriter.Unlock()
-				}
-				return
+			continue
+		}
+		if d.multiPolygon != nil {
+			if planar.MultiPolygonContains(*d.multiPolygon, p) {
+				tzid = append(tzid, id)
 			}
-			if d.multiPolygon != nil {
-				if planar.MultiPolygonContains(*d.multiPolygon, p) {
-					tzidWriter.Lock()
-					tzid = append(tzid, id)
-					tzidWriter.Unlock()
-				}
-			}
-		}(id, d)
+		}
 	}
-	wg.Wait()
 	if len(tzid) > 0 {
 		sort.Strings(tzid)
 		return tzid, nil
