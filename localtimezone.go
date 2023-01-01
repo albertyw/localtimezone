@@ -244,7 +244,7 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 		z.mu.Unlock()
 		return err
 	}
-	z.tzData = make(map[string]tzData)
+	z.tzData = make(map[string]tzData, TZCount)
 	for _, f := range orbData.Features {
 		tzid := f.Properties.MustString("tzid")
 		z.tzData[tzid] = tzData{
