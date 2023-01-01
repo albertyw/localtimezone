@@ -20,6 +20,12 @@ steps:
       - make memprof
     environment:
       CODECOV_TOKEN: 478ec348-c903-47c3-bbe9-c96c4af8c6f7
+
+  - name: Test Makefile
+    image: cytopia/checkmake:latest
+    commands:
+      - checkmake Makefile
+
 trigger:
   event:
     exclude:
