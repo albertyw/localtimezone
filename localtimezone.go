@@ -81,7 +81,6 @@ type LocalTimeZone interface {
 }
 
 type tzData struct {
-	feature      *geojson.Feature
 	polygon      *orb.Polygon
 	multiPolygon *orb.MultiPolygon
 	bound        *orb.Bound
@@ -193,21 +192,23 @@ func getNauticalZone(point orb.Point) (tzid []string, err error) {
 }
 
 // buildCache builds centers for polygons
-func (z *localTimeZone) buildCache() {
+func (z *localTimeZone) buildCache(features []*geojson.Feature) {
 	var wg sync.WaitGroup
 	var m sync.Mutex
 	m.Lock()
-	for id, d := range z.tzData {
+	for _, f := range features {
 		wg.Add(1)
-		go func(id string, d tzData) {
+		go func(f *geojson.Feature) {
 			defer wg.Done()
+			id := f.Properties.MustString("tzid")
 			var multiPolygon orb.MultiPolygon
-			polygon, ok := d.feature.Geometry.(orb.Polygon)
+			d := tzData{}
+			polygon, ok := f.Geometry.(orb.Polygon)
 			if ok {
 				d.polygon = &polygon
 				multiPolygon = []orb.Polygon{polygon}
 			} else {
-				multiPolygon, _ = d.feature.Geometry.(orb.MultiPolygon)
+				multiPolygon, _ = f.Geometry.(orb.MultiPolygon)
 				d.multiPolygon = &multiPolygon
 			}
 			var tzCenters []orb.Point
@@ -217,13 +218,13 @@ func (z *localTimeZone) buildCache() {
 					tzCenters = append(tzCenters, point)
 				}
 			}
-			bound := d.feature.Geometry.Bound()
+			bound := f.Geometry.Bound()
 			d.bound = &bound
 			d.centers = tzCenters
 			m.Lock()
 			z.tzData[id] = d
 			m.Unlock()
-		}(id, d)
+		}(f)
 	}
 	m.Unlock()
 	wg.Wait()
@@ -245,16 +246,9 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 		return err
 	}
 	z.tzData = make(map[string]tzData, TZCount)
-	for _, f := range orbData.Features {
-		tzid := f.Properties.MustString("tzid")
-		z.tzData[tzid] = tzData{
-			feature: f,
-		}
-	}
-
-	go func() {
+	go func(features []*geojson.Feature) {
 		defer z.mu.Unlock()
-		z.buildCache()
-	}()
+		z.buildCache(features)
+	}(orbData.Features)
 	return nil
 }
