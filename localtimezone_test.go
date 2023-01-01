@@ -237,7 +237,7 @@ func BenchmarkZones(b *testing.B) {
 	b.Run("polygon centers", func(b *testing.B) {
 	Loop:
 		for n := 0; n < b.N; {
-			for _, v := range *z.centerCache {
+			for _, v := range z.centerCache {
 				for i := range v {
 					if n > b.N {
 						break Loop
@@ -386,7 +386,7 @@ func TestLoadGeoJSONMalformed(t *testing.T) {
 	if len(c.boundCache) != 0 {
 		t.Errorf("boundCache not reset")
 	}
-	if len(*c.centerCache) != 0 {
+	if len(c.centerCache) != 0 {
 		t.Errorf("centerCache not reset")
 	}
 }
@@ -403,7 +403,7 @@ func TestLoadOverwrite(t *testing.T) {
 	c.mu.RLock()
 	lenOrbData := len(c.orbData.Features)
 	lenBoundCache := len(c.boundCache)
-	lenCenterCache := len(*c.centerCache)
+	lenCenterCache := len(c.centerCache)
 	c.mu.RUnlock()
 
 	err = c.load(MockTZShapeFile)
@@ -418,7 +418,7 @@ func TestLoadOverwrite(t *testing.T) {
 	if len(c.boundCache) >= lenBoundCache {
 		t.Errorf("boundCache not overwritten by loading new data")
 	}
-	if len(*c.centerCache) >= lenCenterCache {
+	if len(c.centerCache) >= lenCenterCache {
 		t.Errorf("centerCache not overwritten by loading new data")
 	}
 }

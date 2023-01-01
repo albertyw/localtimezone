@@ -80,11 +80,10 @@ type LocalTimeZone interface {
 	LoadGeoJSON(io.Reader) error
 }
 
-type centers map[string][]orb.Point
 type localTimeZone struct {
 	orbData     *geojson.FeatureCollection
 	boundCache  map[string]orb.Bound
-	centerCache *centers
+	centerCache map[string][]orb.Point
 	mu          sync.RWMutex
 }
 
@@ -172,7 +171,7 @@ func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
 func (z *localTimeZone) getClosestZone(point orb.Point) (tzid []string, err error) {
 	mindist := math.Inf(1)
 	var winner string
-	for id, v := range *z.centerCache {
+	for id, v := range z.centerCache {
 		for _, p := range v {
 			tmp := planar.Distance(p, point)
 			if tmp < mindist {
@@ -203,7 +202,7 @@ func getNauticalZone(point orb.Point) (tzid []string, err error) {
 
 // buildCache builds centers for polygons
 func (z *localTimeZone) buildCache() {
-	centerCache := make(centers)
+	z.centerCache = make(map[string][]orb.Point)
 	z.boundCache = make(map[string]orb.Bound)
 	var wg sync.WaitGroup
 	var m sync.Mutex
@@ -228,13 +227,12 @@ func (z *localTimeZone) buildCache() {
 			}
 			bound := v.Geometry.Bound()
 			m.Lock()
-			centerCache[tzid] = tzCenters
+			z.centerCache[tzid] = tzCenters
 			z.boundCache[tzid] = bound
 			m.Unlock()
 		}(v)
 	}
 	wg.Wait()
-	z.centerCache = &centerCache
 }
 
 // LoadGeoJSON loads a custom GeoJSON shapefile from a Reader
@@ -249,8 +247,7 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	orbData, err := geojson.UnmarshalFeatureCollection(buf.Bytes())
 	if err != nil {
 		z.orbData = &geojson.FeatureCollection{}
-		centerCache := make(centers)
-		z.centerCache = &centerCache
+		z.centerCache = make(map[string][]orb.Point)
 		z.boundCache = make(map[string]orb.Bound)
 		z.mu.Unlock()
 		return err
