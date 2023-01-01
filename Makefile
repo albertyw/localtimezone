@@ -1,15 +1,21 @@
 SHELL := /bin/bash
 
+.PHONY:install-test-deps
+install-test-deps:
+	go install honnef.co/go/tools/cmd/staticcheck@v0.3.3
+	go install github.com/kisielk/errcheck@v1.6.2
+
 .PHONY:test
-test:
-	go test -coverprofile=coverage.txt -covermode=atomic ./...
+test: install-test-deps unit
 	go vet ./...
-	go install honnef.co/go/tools/cmd/staticcheck@latest
 	staticcheck -checks all ./...
-	go install github.com/kisielk/errcheck@latest
 	errcheck -asserts ./...
 	gofmt -e -l -d -s .
 	go mod tidy
+
+.PHONY:unit
+unit:
+	go test -coverprofile=coverage.txt -covermode=atomic ./...
 
 .PHONY:cover
 cover: test
