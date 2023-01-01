@@ -206,7 +206,6 @@ func getNauticalZone(point orb.Point) (tzid []string, err error) {
 
 // buildCache builds centers for polygons
 func (z *localTimeZone) buildCache() {
-	z.tzData = make(map[string]tzData)
 	var wg sync.WaitGroup
 	var m sync.Mutex
 	for _, v := range z.orbData {
@@ -229,12 +228,11 @@ func (z *localTimeZone) buildCache() {
 				}
 			}
 			bound := v.Geometry.Bound()
-			data := tzData{
-				bound:   bound,
-				centers: tzCenters,
-			}
 			m.Lock()
-			z.tzData[tzid] = data
+			d := z.tzData[tzid]
+			d.bound = bound
+			d.centers = tzCenters
+			z.tzData[tzid] = d
 			m.Unlock()
 		}(v)
 	}
@@ -259,6 +257,11 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 		return err
 	}
 	z.orbData = orbData.Features
+	z.tzData = make(map[string]tzData)
+	for _, f := range orbData.Features {
+		tzid := f.Properties.MustString("tzid")
+		z.tzData[tzid] = tzData{}
+	}
 
 	go func() {
 		defer z.mu.Unlock()
