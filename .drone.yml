@@ -8,10 +8,16 @@ steps:
     commands:
       - make test
       - make race
-      - make benchmark
       - curl -Os https://uploader.codecov.io/latest/linux/codecov
       - chmod +x codecov
       - ./codecov
+      - make benchmark
+      - make benchmark-getzone
+      - make cpuprof
+      - make memprof
+      - make benchmark-clientinit
+      - make cpuprof
+      - make memprof
     environment:
       CODECOV_TOKEN: 478ec348-c903-47c3-bbe9-c96c4af8c6f7
 trigger:

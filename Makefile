@@ -15,10 +15,26 @@ test:
 cover: test
 	go tool cover -func=coverage.txt
 
+.PHONY:race
+race:
+	go test -race ./...
+
 .PHONY:benchmark
 benchmark:
 	go test -bench=. -benchmem
 
-.PHONY:race
-race:
-	go test -race ./...
+.PHONY:benchmark-getzone
+benchmark-getzone:
+	go test -bench=BenchmarkGetZone -benchtime 30s -benchmem -cpuprofile cpuprofile.out -memprofile memprofile.out
+
+.PHONY:benchmark-clientinit
+benchmark-clientinit:
+	go test -bench=BenchmarkClientInit -benchmem -cpuprofile cpuprofile.out -memprofile memprofile.out
+
+.PHONY:cpuprof
+cpuprof:
+	go tool pprof -top cpuprofile.out | head -n 20
+
+.PHONY:memprof
+memprof:
+	go tool pprof -top memprofile.out | head -n 20
