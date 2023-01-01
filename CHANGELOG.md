@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+v3.0.2
+------
+
+ - Performance Optimizations
+ - Testing/benchmarking improvements
+
+
 v3.0.1
 ------
 
