@@ -80,12 +80,17 @@ type LocalTimeZone interface {
 	LoadGeoJSON(io.Reader) error
 }
 
-type centers map[string][]orb.Point
+type tzData struct {
+	feature      *geojson.Feature
+	polygon      *orb.Polygon
+	multiPolygon *orb.MultiPolygon
+	bound        *orb.Bound
+	centers      []orb.Point
+}
+
 type localTimeZone struct {
-	orbData     *geojson.FeatureCollection
-	boundCache  map[string]orb.Bound
-	centerCache *centers
-	mu          sync.RWMutex
+	tzData map[string]tzData
+	mu     sync.RWMutex
 }
 
 var _ LocalTimeZone = &localTimeZone{}
@@ -132,36 +137,22 @@ func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
 	}
 	z.mu.RLock()
 	defer z.mu.RUnlock()
-	var wg sync.WaitGroup
-	var tzidWriter sync.Mutex
-	for _, v := range z.orbData.Features {
-		wg.Add(1)
-		go func(v *geojson.Feature) {
-			defer wg.Done()
-			id := v.Properties.MustString("tzid")
-			if !z.boundCache[id].Contains(p) {
-				return
+	for id, d := range z.tzData {
+		if !d.bound.Contains(p) {
+			continue
+		}
+		if d.polygon != nil {
+			if planar.PolygonContains(*d.polygon, p) {
+				tzid = append(tzid, id)
 			}
-			polygon, ok := v.Geometry.(orb.Polygon)
-			if ok {
-				if planar.PolygonContains(polygon, p) {
-					tzidWriter.Lock()
-					tzid = append(tzid, id)
-					tzidWriter.Unlock()
-				}
-				return
+			continue
+		}
+		if d.multiPolygon != nil {
+			if planar.MultiPolygonContains(*d.multiPolygon, p) {
+				tzid = append(tzid, id)
 			}
-			multiPolygon, ok := v.Geometry.(orb.MultiPolygon)
-			if ok {
-				if planar.MultiPolygonContains(multiPolygon, p) {
-					tzidWriter.Lock()
-					tzid = append(tzid, id)
-					tzidWriter.Unlock()
-				}
-			}
-		}(v)
+		}
 	}
-	wg.Wait()
 	if len(tzid) > 0 {
 		sort.Strings(tzid)
 		return tzid, nil
@@ -172,8 +163,8 @@ func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
 func (z *localTimeZone) getClosestZone(point orb.Point) (tzid []string, err error) {
 	mindist := math.Inf(1)
 	var winner string
-	for id, v := range *z.centerCache {
-		for _, p := range v {
+	for id, d := range z.tzData {
+		for _, p := range d.centers {
 			tmp := planar.Distance(p, point)
 			if tmp < mindist {
 				mindist = tmp
@@ -203,21 +194,21 @@ func getNauticalZone(point orb.Point) (tzid []string, err error) {
 
 // buildCache builds centers for polygons
 func (z *localTimeZone) buildCache() {
-	centerCache := make(centers)
-	z.boundCache = make(map[string]orb.Bound)
 	var wg sync.WaitGroup
 	var m sync.Mutex
-	for _, v := range z.orbData.Features {
+	m.Lock()
+	for id, d := range z.tzData {
 		wg.Add(1)
-		go func(v *geojson.Feature) {
+		go func(id string, d tzData) {
 			defer wg.Done()
-			tzid := v.Properties.MustString("tzid")
 			var multiPolygon orb.MultiPolygon
-			polygon, ok := v.Geometry.(orb.Polygon)
+			polygon, ok := d.feature.Geometry.(orb.Polygon)
 			if ok {
+				d.polygon = &polygon
 				multiPolygon = []orb.Polygon{polygon}
 			} else {
-				multiPolygon, _ = v.Geometry.(orb.MultiPolygon)
+				multiPolygon, _ = d.feature.Geometry.(orb.MultiPolygon)
+				d.multiPolygon = &multiPolygon
 			}
 			var tzCenters []orb.Point
 			for _, polygon := range multiPolygon {
@@ -226,15 +217,16 @@ func (z *localTimeZone) buildCache() {
 					tzCenters = append(tzCenters, point)
 				}
 			}
-			bound := v.Geometry.Bound()
+			bound := d.feature.Geometry.Bound()
+			d.bound = &bound
+			d.centers = tzCenters
 			m.Lock()
-			centerCache[tzid] = tzCenters
-			z.boundCache[tzid] = bound
+			z.tzData[id] = d
 			m.Unlock()
-		}(v)
+		}(id, d)
 	}
+	m.Unlock()
 	wg.Wait()
-	z.centerCache = &centerCache
 }
 
 // LoadGeoJSON loads a custom GeoJSON shapefile from a Reader
@@ -248,14 +240,17 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	}
 	orbData, err := geojson.UnmarshalFeatureCollection(buf.Bytes())
 	if err != nil {
-		z.orbData = &geojson.FeatureCollection{}
-		centerCache := make(centers)
-		z.centerCache = &centerCache
-		z.boundCache = make(map[string]orb.Bound)
+		z.tzData = make(map[string]tzData)
 		z.mu.Unlock()
 		return err
 	}
-	z.orbData = orbData
+	z.tzData = make(map[string]tzData)
+	for _, f := range orbData.Features {
+		tzid := f.Properties.MustString("tzid")
+		z.tzData[tzid] = tzData{
+			feature: f,
+		}
+	}
 
 	go func() {
 		defer z.mu.Unlock()

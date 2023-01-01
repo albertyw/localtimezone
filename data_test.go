@@ -94,11 +94,11 @@ func TestTzidPresent(t *testing.T) {
 	if !ok {
 		t.Error("error when initializing client")
 	}
-	for _, feature := range z.orbData.Features {
-		tzid := feature.Properties.MustString("tzid")
-		if tzid == "" {
-			t.Error("unexpected feature with empty tzid")
-		}
+	z.mu.RLock()
+	z.mu.RUnlock() //lint:ignore SA2001 Make sure client has loaded
+	_, ok = z.tzData["id"]
+	if ok {
+		t.Error("unexpected feature with empty tzid")
 	}
 }
 

@@ -237,14 +237,14 @@ func BenchmarkZones(b *testing.B) {
 	b.Run("polygon centers", func(b *testing.B) {
 	Loop:
 		for n := 0; n < b.N; {
-			for _, v := range *z.centerCache {
-				for i := range v {
+			for _, d := range z.tzData {
+				for _, centers := range d.centers {
 					if n > b.N {
 						break Loop
 					}
-					_, err := z.GetZone(pointFromOrb(v[i]))
+					_, err := z.GetZone(pointFromOrb(centers))
 					if err != nil {
-						b.Errorf("point %v did not return a zone", v[i])
+						b.Errorf("point %v did not return a zone", centers)
 					}
 					n++
 				}
@@ -380,14 +380,8 @@ func TestLoadGeoJSONMalformed(t *testing.T) {
 	}
 	defer c.mu.Unlock()
 
-	if len(c.orbData.Features) != 0 {
-		t.Errorf("orbData not reset")
-	}
-	if len(c.boundCache) != 0 {
-		t.Errorf("boundCache not reset")
-	}
-	if len(*c.centerCache) != 0 {
-		t.Errorf("centerCache not reset")
+	if len(c.tzData) != 0 {
+		t.Errorf("tzData not reset")
 	}
 }
 
@@ -401,9 +395,7 @@ func TestLoadOverwrite(t *testing.T) {
 		t.Errorf("cannot initialize client")
 	}
 	c.mu.RLock()
-	lenOrbData := len(c.orbData.Features)
-	lenBoundCache := len(c.boundCache)
-	lenCenterCache := len(*c.centerCache)
+	lenTzData := len(c.tzData)
 	c.mu.RUnlock()
 
 	err = c.load(MockTZShapeFile)
@@ -412,13 +404,7 @@ func TestLoadOverwrite(t *testing.T) {
 	if err != nil {
 		t.Errorf("cannot switch client to mock data, got %v", err)
 	}
-	if len(c.orbData.Features) >= lenOrbData {
-		t.Errorf("orbData not overwritten by loading new data")
-	}
-	if len(c.boundCache) >= lenBoundCache {
+	if len(c.tzData) >= lenTzData {
 		t.Errorf("boundCache not overwritten by loading new data")
-	}
-	if len(*c.centerCache) >= lenCenterCache {
-		t.Errorf("centerCache not overwritten by loading new data")
 	}
 }
