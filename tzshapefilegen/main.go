@@ -25,6 +25,9 @@ package localtimezone
 
 // TZBoundaryVersion is the version of tzdata that was used to generate timezone boundaries
 const TZBoundaryVersion = "%s"
+
+// TZCount is the number of tzdata timezones supported
+const TZCount = %d
 `
 const defaultRelease = "default"
 
@@ -114,14 +117,14 @@ func getGeoJSON(releaseURL string) ([]byte, error) {
 	return geojsonData, nil
 }
 
-func orbExec(combinedJSON []byte) ([]byte, error) {
+func orbExec(combinedJSON []byte) ([]byte, int, error) {
 	geojson.CustomJSONMarshaler = json.ConfigFastest
 	geojson.CustomJSONUnmarshaler = json.ConfigFastest
 
 	fc, err := geojson.UnmarshalFeatureCollection(combinedJSON)
 	if err != nil {
 		log.Printf("Error: could not parse combined.json: %v\n", err)
-		return nil, err
+		return nil, 0, err
 	}
 	features := []*geojson.Feature{}
 	for _, feature := range fc.Features {
@@ -132,12 +135,13 @@ func orbExec(combinedJSON []byte) ([]byte, error) {
 		features = append(features, feature)
 	}
 	fc.Features = features
+	tzCount := len(fc.Features)
 	reducedJSON, err := fc.MarshalJSON()
 	if err != nil {
 		log.Printf("Error: could not marshal reduced.json: %v\n", err)
-		return nil, err
+		return nil, 0, err
 	}
-	return reducedJSON, nil
+	return reducedJSON, tzCount, nil
 }
 
 func generateData(geoJSON []byte) ([]byte, error) {
@@ -170,8 +174,8 @@ func writeData(content []byte) error {
 	return nil
 }
 
-func writeVersion(release string) error {
-	content := fmt.Sprintf(versionTemplate, release)
+func writeVersion(release string, tzCount int) error {
+	content := fmt.Sprintf(versionTemplate, release, tzCount)
 	outfile, err := os.Create("version.go")
 	if err != nil {
 		log.Printf("Error: could not create version.go: %v", err)
@@ -213,7 +217,7 @@ func main() {
 	}
 
 	fmt.Println("*** SIMPLIFYING GEOJSON ***")
-	geojsonData, err = orbExec(geojsonData)
+	geojsonData, tzCount, err := orbExec(geojsonData)
 	if err != nil {
 		return
 	}
@@ -230,7 +234,7 @@ func main() {
 		return
 	}
 
-	err = writeVersion(*release)
+	err = writeVersion(*release, tzCount)
 	if err != nil {
 		return
 	}
