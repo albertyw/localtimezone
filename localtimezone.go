@@ -81,6 +81,7 @@ type LocalTimeZone interface {
 }
 
 type tzData struct {
+	feature *geojson.Feature
 	bound   orb.Bound
 	centers []orb.Point
 }
@@ -137,15 +138,14 @@ func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
 	defer z.mu.RUnlock()
 	var wg sync.WaitGroup
 	var tzidWriter sync.Mutex
-	for _, v := range z.orbData {
+	for id, d := range z.tzData {
 		wg.Add(1)
-		go func(v *geojson.Feature) {
+		go func(id string, d tzData) {
 			defer wg.Done()
-			id := v.Properties.MustString("tzid")
-			if !z.tzData[id].bound.Contains(p) {
+			if !d.bound.Contains(p) {
 				return
 			}
-			polygon, ok := v.Geometry.(orb.Polygon)
+			polygon, ok := d.feature.Geometry.(orb.Polygon)
 			if ok {
 				if planar.PolygonContains(polygon, p) {
 					tzidWriter.Lock()
@@ -154,7 +154,7 @@ func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
 				}
 				return
 			}
-			multiPolygon, ok := v.Geometry.(orb.MultiPolygon)
+			multiPolygon, ok := d.feature.Geometry.(orb.MultiPolygon)
 			if ok {
 				if planar.MultiPolygonContains(multiPolygon, p) {
 					tzidWriter.Lock()
@@ -162,7 +162,7 @@ func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
 					tzidWriter.Unlock()
 				}
 			}
-		}(v)
+		}(id, d)
 	}
 	wg.Wait()
 	if len(tzid) > 0 {
@@ -260,7 +260,9 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	z.tzData = make(map[string]tzData)
 	for _, f := range orbData.Features {
 		tzid := f.Properties.MustString("tzid")
-		z.tzData[tzid] = tzData{}
+		z.tzData[tzid] = tzData{
+			feature: f,
+		}
 	}
 
 	go func() {
