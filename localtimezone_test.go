@@ -163,6 +163,14 @@ var tt = []struct {
 			err:   nil,
 		},
 	},
+	{
+		"Broken Timezone",
+		Point{360.0, 360.0},
+		result{
+			zones: []string{""},
+			err:   ErrOutOfRange,
+		},
+	},
 }
 
 func TestGetZone(t *testing.T) {
@@ -176,8 +184,11 @@ func TestGetZone(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			tzids, err := z.GetZone(tc.point)
-			if err != tc.err {
-				t.Errorf("expected err %v; got %v", tc.err, err)
+			if tc.err != nil {
+				if err != tc.err {
+					t.Errorf("expected err %v; got %v", tc.err, err)
+				}
+				return
 			}
 			if len(tzids) != len(tc.zones) {
 				t.Errorf("expected %d zones; got %d", len(tc.zones), len(tzids))
@@ -225,8 +236,11 @@ func TestMockLocalTimeZone(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			tzids, err := z.GetZone(tc.point)
-			if err != tc.err {
-				t.Errorf("expected err %v; got %v", tc.err, err)
+			if tc.err != nil {
+				if err != tc.err {
+					t.Errorf("expected err %v; got %v", tc.err, err)
+				}
+				return
 			}
 			if len(tzids) != 1 {
 				t.Errorf("expected 1 zone; got %d", len(tzids))
@@ -282,6 +296,9 @@ func BenchmarkZones(b *testing.B) {
 	Loop:
 		for n := 0; n < b.N; {
 			for _, tc := range tt {
+				if tc.err != nil {
+					continue
+				}
 				if n > b.N {
 					break Loop
 				}
