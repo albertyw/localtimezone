@@ -88,6 +88,7 @@ type tzData struct {
 }
 
 type localTimeZone struct {
+	tzids  []string
 	tzData map[string]tzData
 	mu     sync.RWMutex
 }
@@ -136,7 +137,8 @@ func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
 	}
 	z.mu.RLock()
 	defer z.mu.RUnlock()
-	for id, d := range z.tzData {
+	for _, id := range z.tzids {
+		d := z.tzData[id]
 		if !d.bound.Contains(p) {
 			continue
 		}
@@ -153,7 +155,6 @@ func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
 		}
 	}
 	if len(tzid) > 0 {
-		sort.Strings(tzid)
 		return tzid, nil
 	}
 	return z.getClosestZone(p)
@@ -228,6 +229,14 @@ func (z *localTimeZone) buildCache(features []*geojson.Feature) {
 	}
 	m.Unlock()
 	wg.Wait()
+
+	z.tzids = make([]string, len(z.tzData))
+	i := 0
+	for tzid := range z.tzData {
+		z.tzids[i] = tzid
+		i++
+	}
+	sort.Strings(z.tzids)
 }
 
 // LoadGeoJSON loads a custom GeoJSON shapefile from a Reader
@@ -242,10 +251,12 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	orbData, err := geojson.UnmarshalFeatureCollection(buf.Bytes())
 	if err != nil {
 		z.tzData = make(map[string]tzData)
+		z.tzids = []string{}
 		z.mu.Unlock()
 		return err
 	}
-	z.tzData = make(map[string]tzData, TZCount)
+	z.tzData = make(map[string]tzData, TZCount) // Possibly the incorrect length in case of Mock or custom data
+	z.tzids = []string{}                        // Cannot set a length or else array will be full of empty strings
 	go func(features []*geojson.Feature) {
 		defer z.mu.Unlock()
 		z.buildCache(features)
