@@ -191,6 +191,33 @@ func TestGetZone(t *testing.T) {
 	}
 }
 
+func TestGetOneZone(t *testing.T) {
+	t.Parallel()
+	z, err := NewLocalTimeZone()
+	if err != nil {
+		t.Errorf("cannot initialize timezone client: %v", err)
+	}
+	for _, tc := range tt {
+		tc := tc // Remove race condition over test fields
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			tzid, err := z.GetOneZone(tc.point)
+			if err != tc.err {
+				t.Errorf("expected err %v; got %v", tc.err, err)
+			}
+			found := false
+			for _, zone := range tc.zones {
+				if tzid == zone {
+					found = true
+				}
+			}
+			if !found {
+				t.Errorf("expected one of zones %s; got %s", tc.zones, tzid)
+			}
+		})
+	}
+}
+
 func TestMockLocalTimeZone(t *testing.T) {
 	z := NewMockLocalTimeZone()
 	for _, tc := range tt {
