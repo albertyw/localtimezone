@@ -4,14 +4,14 @@ CHANGELOG
 v3.0.2
 ------
 
- - Performance Optimizations
+ - Performance optimizations
  - Testing/benchmarking improvements
 
 
 v3.0.1
 ------
 
- - Update tzdata from 2022f to 2022g
+ - Update tzdata from 2022f to 2022g.  Full changelog at https://github.com/evansiroky/timezone-boundary-builder/releases/tag/2022g
  - Check all returned errors with `errcheck`
  - Continually check for tzdata freshness
  - Update CI configuration
