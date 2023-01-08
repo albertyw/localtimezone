@@ -53,6 +53,10 @@ const MockTimeZone = "America/Los_Angeles"
 // ErrOutOfRange is returned when latitude exceeds 90 degrees or longitude exceeds 180 degrees
 var ErrOutOfRange = errors.New("point's coordinates out of range")
 
+// ErrNoTimeZone is returned when no matching timezone is found
+// This error should never be returned because the client will attempt to return the nearest zone
+var ErrNoTimeZone = errors.New("no timezone found")
+
 // Point describes a location by Latitude and Longitude
 type Point struct {
 	Lon float64
@@ -138,8 +142,11 @@ func (z *localTimeZone) GetZone(point Point) (tzids []string, err error) {
 // GetOneZone returns a single zone id for a given Point
 func (z *localTimeZone) GetOneZone(point Point) (tzid string, err error) {
 	tzids, err := z.getZone(point, true)
-	if err != nil && len(tzids) > 0 {
+	if err != nil {
 		return "", err
+	}
+	if len(tzids) == 0 {
+		return "", ErrNoTimeZone
 	}
 	return tzids[0], err
 }
