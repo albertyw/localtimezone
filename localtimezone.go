@@ -77,6 +77,7 @@ func init() {
 // LocalTimeZone is a client for looking up time zones by Points
 type LocalTimeZone interface {
 	GetZone(p Point) (tzid []string, err error)
+	GetOneZone(p Point) (tzid string, err error)
 	LoadGeoJSON(io.Reader) error
 }
 
@@ -131,6 +132,19 @@ func (z *localTimeZone) load(shapeFile []byte) error {
 
 // GetZone returns a slice of strings containing time zone id's for a given Point
 func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
+	return z.getZone(point, false)
+}
+
+// GetOneZone returns a single zone id for a given Point
+func (z *localTimeZone) GetOneZone(point Point) (tzid string, err error) {
+	tzids, err := z.getZone(point, true)
+	if err != nil && len(tzids) > 0 {
+		return "", err
+	}
+	return tzids[0], err
+}
+
+func (z *localTimeZone) getZone(point Point, single bool) (tzid []string, err error) {
 	p := pointToOrb(point)
 	if p[0] > 180 || p[0] < -180 || p[1] > 90 || p[1] < -90 {
 		return nil, ErrOutOfRange
@@ -145,12 +159,18 @@ func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
 		if d.polygon != nil {
 			if planar.PolygonContains(*d.polygon, p) {
 				tzid = append(tzid, id)
+				if single {
+					return
+				}
 			}
 			continue
 		}
 		if d.multiPolygon != nil {
 			if planar.MultiPolygonContains(*d.multiPolygon, p) {
 				tzid = append(tzid, id)
+				if single {
+					return
+				}
 			}
 		}
 	}
