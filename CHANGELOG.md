@@ -1,6 +1,15 @@
 CHANGELOG
 =========
 
+v3.1.0 (2023-01-07)
+-------------------
+
+ - Add a `GetOneZone` function that returns a single valid timezone for the requested coordinates.  This function is faster than the previous `GetZone` function by 10-20% on average.
+ - Performance optimizations
+ - Testing improvements
+ - Changelog cleanup
+
+
 v3.0.2 (2023-01-01)
 -------------------
 
