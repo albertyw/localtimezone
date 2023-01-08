@@ -76,7 +76,8 @@ func init() {
 
 // LocalTimeZone is a client for looking up time zones by Points
 type LocalTimeZone interface {
-	GetZone(p Point) (tzid []string, err error)
+	GetZone(p Point) (tzids []string, err error)
+	GetOneZone(p Point) (tzid string, err error)
 	LoadGeoJSON(io.Reader) error
 }
 
@@ -130,7 +131,20 @@ func (z *localTimeZone) load(shapeFile []byte) error {
 }
 
 // GetZone returns a slice of strings containing time zone id's for a given Point
-func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
+func (z *localTimeZone) GetZone(point Point) (tzids []string, err error) {
+	return z.getZone(point, false)
+}
+
+// GetOneZone returns a single zone id for a given Point
+func (z *localTimeZone) GetOneZone(point Point) (tzid string, err error) {
+	tzids, err := z.getZone(point, true)
+	if err != nil && len(tzids) > 0 {
+		return "", err
+	}
+	return tzids[0], err
+}
+
+func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err error) {
 	p := pointToOrb(point)
 	if p[0] > 180 || p[0] < -180 || p[1] > 90 || p[1] < -90 {
 		return nil, ErrOutOfRange
@@ -144,23 +158,29 @@ func (z *localTimeZone) GetZone(point Point) (tzid []string, err error) {
 		}
 		if d.polygon != nil {
 			if planar.PolygonContains(*d.polygon, p) {
-				tzid = append(tzid, id)
+				tzids = append(tzids, id)
+				if single {
+					return
+				}
 			}
 			continue
 		}
 		if d.multiPolygon != nil {
 			if planar.MultiPolygonContains(*d.multiPolygon, p) {
-				tzid = append(tzid, id)
+				tzids = append(tzids, id)
+				if single {
+					return
+				}
 			}
 		}
 	}
-	if len(tzid) > 0 {
-		return tzid, nil
+	if len(tzids) > 0 {
+		return tzids, nil
 	}
 	return z.getClosestZone(p)
 }
 
-func (z *localTimeZone) getClosestZone(point orb.Point) (tzid []string, err error) {
+func (z *localTimeZone) getClosestZone(point orb.Point) (tzids []string, err error) {
 	mindist := math.Inf(1)
 	var winner string
 	for id, d := range z.tzData {
@@ -176,20 +196,20 @@ func (z *localTimeZone) getClosestZone(point orb.Point) (tzid []string, err erro
 	if mindist > 2.0 {
 		return getNauticalZone(point)
 	}
-	return append(tzid, winner), nil
+	return append(tzids, winner), nil
 }
 
-func getNauticalZone(point orb.Point) (tzid []string, err error) {
+func getNauticalZone(point orb.Point) (tzids []string, err error) {
 	z := point[0] / 7.5
 	z = (math.Abs(z) + 1) / 2
 	z = math.Floor(z)
 	if z == 0 {
-		return append(tzid, "Etc/GMT"), nil
+		return append(tzids, "Etc/GMT"), nil
 	}
 	if point[0] < 0 {
-		return append(tzid, fmt.Sprintf("Etc/GMT+%.f", z)), nil
+		return append(tzids, fmt.Sprintf("Etc/GMT+%.f", z)), nil
 	}
-	return append(tzid, fmt.Sprintf("Etc/GMT-%.f", z)), nil
+	return append(tzids, fmt.Sprintf("Etc/GMT-%.f", z)), nil
 }
 
 // buildCache builds centers for polygons

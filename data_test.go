@@ -71,15 +71,22 @@ func TestData(t *testing.T) {
 				Lon: tc.Lon,
 				Lat: tc.Lat,
 			}
-			tzid, err := z.GetZone(point)
+			tzids, err := z.GetZone(point)
 			if err != nil {
 				t.Errorf("unexpected err %v", err)
 			}
-			if len(tzid) < 1 {
+			if len(tzids) < 1 {
 				t.Error("cannot find a timezone")
 			}
-			if tc.ExpectedZone != tzid[0] {
-				t.Errorf("expected zone %s; got %s", tc.ExpectedZone, tzid[0])
+			if tc.ExpectedZone != tzids[0] {
+				t.Errorf("expected zone %s; got %s", tc.ExpectedZone, tzids[0])
+			}
+			tzid, err := z.GetOneZone(point)
+			if err != nil {
+				t.Errorf("unexpected err %v", err)
+			}
+			if tc.ExpectedZone != tzid {
+				t.Errorf("expected zone %s; got %s", tc.ExpectedZone, tzid)
 			}
 		})
 	}
@@ -117,7 +124,7 @@ func BenchmarkGetZone(b *testing.B) {
 	}
 	c.mu.RLock()
 	c.mu.RUnlock() //lint:ignore SA2001 Make sure client has loaded
-	b.Run("city time zones", func(b *testing.B) {
+	b.Run("GetZone on large cities", func(b *testing.B) {
 	Loop:
 		for n := 0; n < b.N; {
 			for _, tc := range data {
@@ -129,6 +136,25 @@ func BenchmarkGetZone(b *testing.B) {
 					Lat: tc.Lat,
 				}
 				_, err = client.GetZone(point)
+				if err != nil {
+					b.Errorf("point %v did not return a zone", point)
+				}
+				n++
+			}
+		}
+	})
+	b.Run("GetOneZone on large cities", func(b *testing.B) {
+	Loop:
+		for n := 0; n < b.N; {
+			for _, tc := range data {
+				if n > b.N {
+					break Loop
+				}
+				point := Point{
+					Lon: tc.Lon,
+					Lat: tc.Lat,
+				}
+				_, err = client.GetOneZone(point)
 				if err != nil {
 					b.Errorf("point %v did not return a zone", point)
 				}

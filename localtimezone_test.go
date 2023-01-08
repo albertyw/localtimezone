@@ -175,17 +175,44 @@ func TestGetZone(t *testing.T) {
 		tc := tc // Remove race condition over test fields
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			tzid, err := z.GetZone(tc.point)
+			tzids, err := z.GetZone(tc.point)
 			if err != tc.err {
 				t.Errorf("expected err %v; got %v", tc.err, err)
 			}
-			if len(tzid) != len(tc.zones) {
-				t.Errorf("expected %d zones; got %d", len(tc.zones), len(tzid))
+			if len(tzids) != len(tc.zones) {
+				t.Errorf("expected %d zones; got %d", len(tc.zones), len(tzids))
 			}
 			for i, zone := range tc.zones {
-				if tzid[i] != zone {
-					t.Errorf("expected zone %s; got %s", zone, tzid[i])
+				if tzids[i] != zone {
+					t.Errorf("expected zone %s; got %s", zone, tzids[i])
 				}
+			}
+		})
+	}
+}
+
+func TestGetOneZone(t *testing.T) {
+	t.Parallel()
+	z, err := NewLocalTimeZone()
+	if err != nil {
+		t.Errorf("cannot initialize timezone client: %v", err)
+	}
+	for _, tc := range tt {
+		tc := tc // Remove race condition over test fields
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			tzid, err := z.GetOneZone(tc.point)
+			if err != tc.err {
+				t.Errorf("expected err %v; got %v", tc.err, err)
+			}
+			found := false
+			for _, zone := range tc.zones {
+				if tzid == zone {
+					found = true
+				}
+			}
+			if !found {
+				t.Errorf("expected one of zones %s; got %s", tc.zones, tzid)
 			}
 		})
 	}
@@ -197,15 +224,15 @@ func TestMockLocalTimeZone(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			tzid, err := z.GetZone(tc.point)
+			tzids, err := z.GetZone(tc.point)
 			if err != tc.err {
 				t.Errorf("expected err %v; got %v", tc.err, err)
 			}
-			if len(tzid) != 1 {
-				t.Errorf("expected 1 zone; got %d", len(tzid))
+			if len(tzids) != 1 {
+				t.Errorf("expected 1 zone; got %d", len(tzids))
 			}
-			if tzid[0] != MockTimeZone {
-				t.Errorf("expected zone America/Los_Angeles; got %s", tzid[0])
+			if tzids[0] != MockTimeZone {
+				t.Errorf("expected zone America/Los_Angeles; got %s", tzids[0])
 			}
 		})
 	}
