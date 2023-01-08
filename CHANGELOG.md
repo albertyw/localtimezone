@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+v3.1.1 (2023-01-07)
+-------------------
+
+ - Fix error handling on invalid timezones
+
+
 v3.1.0 (2023-01-07)
 -------------------
 
