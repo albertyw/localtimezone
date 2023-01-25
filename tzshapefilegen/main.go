@@ -6,6 +6,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"encoding/gob"
 	"flag"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"os"
 
 	json "github.com/json-iterator/go"
+	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geojson"
 	"github.com/paulmach/orb/simplify"
 )
@@ -136,11 +138,16 @@ func orbExec(combinedJSON []byte) ([]byte, int, error) {
 	}
 	fc.Features = features
 	tzCount := len(fc.Features)
-	reducedJSON, err := fc.MarshalJSON()
+	var buf bytes.Buffer
+	gob.Register(orb.Polygon{})
+	gob.Register(orb.MultiPolygon{})
+	encoder := gob.NewEncoder(&buf)
+	err = encoder.Encode(fc)
 	if err != nil {
 		log.Printf("Error: could not marshal reduced.json: %v\n", err)
 		return nil, 0, err
 	}
+	reducedJSON := buf.Bytes()
 	return reducedJSON, tzCount, nil
 }
 
