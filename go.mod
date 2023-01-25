@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/json-iterator/go v1.1.12
-	github.com/paulmach/orb v0.7.1
+	github.com/paulmach/orb v0.8.0
 	go.uber.org/goleak v1.2.0
 )
 
