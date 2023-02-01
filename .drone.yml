@@ -13,8 +13,6 @@ steps:
       - ./codecov
       - make benchmark
       - make benchmark-getzone
-      - make cpuprof
-      - make memprof
       - make benchmark-clientinit
       - make cpuprof
       - make memprof
