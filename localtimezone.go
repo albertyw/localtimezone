@@ -30,6 +30,7 @@ import (
 
 	json "github.com/json-iterator/go"
 	"github.com/paulmach/orb"
+	"github.com/paulmach/orb/encoding/mvt"
 	"github.com/paulmach/orb/geojson"
 	"github.com/paulmach/orb/planar"
 )
@@ -274,12 +275,20 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	orbData, err := geojson.UnmarshalFeatureCollection(buf.Bytes())
+	layers, err := mvt.Unmarshal(buf.Bytes())
 	if err != nil {
 		z.tzData = make(map[string]tzData)
 		z.tzids = []string{}
 		z.mu.Unlock()
 		return err
+	}
+	fcs := layers.ToFeatureCollections()
+	orbData, ok := fcs["data"]
+	if !ok {
+		z.tzData = make(map[string]tzData)
+		z.tzids = []string{}
+		z.mu.Unlock()
+		return errors.New("asdf")
 	}
 	z.tzData = make(map[string]tzData, TZCount) // Possibly the incorrect length in case of Mock or custom data
 	z.tzids = []string{}                        // Cannot set a length or else array will be full of empty strings
