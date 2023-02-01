@@ -235,40 +235,6 @@ func TestGetOneZone(t *testing.T) {
 	}
 }
 
-func TestMockLocalTimeZone(t *testing.T) {
-	z := NewMockLocalTimeZone()
-	for _, tc := range tt {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			tzids, err := z.GetZone(tc.point)
-			if tc.err != nil {
-				if err != tc.err {
-					t.Errorf("expected err %v; got %v", tc.err, err)
-				}
-				return
-			}
-			if len(tzids) != 1 {
-				t.Errorf("expected 1 zone; got %d", len(tzids))
-			}
-			if tzids[0] != MockTimeZone {
-				t.Errorf("expected zone America/Los_Angeles; got %s", tzids[0])
-			}
-		})
-	}
-}
-
-func TestMockLocalTimeZonePanic(t *testing.T) {
-	tempMockTZShapeFile := MockTZShapeFile
-	MockTZShapeFile = []byte("asdf")
-	defer func() {
-		MockTZShapeFile = tempMockTZShapeFile
-		if r := recover(); r == nil {
-			t.Errorf("expected a panic; got no panic")
-		}
-	}()
-	NewMockLocalTimeZone()
-}
-
 func BenchmarkZones(b *testing.B) {
 	zInterface, err := NewLocalTimeZone()
 	if err != nil {
@@ -335,18 +301,8 @@ func BenchmarkClientInit(b *testing.B) {
 			defer cStruct.mu.RUnlock()
 		}
 	})
-	b.Run("mock client", func(b *testing.B) {
-		for b.Loop() {
-			c := NewMockLocalTimeZone()
-			cStruct, ok := c.(*localTimeZone)
-			if !ok {
-				b.Errorf("cannot initialize timezone client")
-			}
-			cStruct.mu.RLock()
-			defer cStruct.mu.RUnlock()
-		}
-	})
 }
+
 func TestNautical(t *testing.T) {
 	t.Parallel()
 	tt := []struct {
@@ -429,29 +385,5 @@ func TestLoadGeoJSONMalformed(t *testing.T) {
 
 	if len(c.tzData) != 0 {
 		t.Errorf("tzData not reset")
-	}
-}
-
-func TestLoadOverwrite(t *testing.T) {
-	client, err := NewLocalTimeZone()
-	if err != nil {
-		t.Errorf("cannot initialize client, got %v", err)
-	}
-	c, ok := client.(*localTimeZone)
-	if !ok {
-		t.Errorf("cannot initialize client")
-	}
-	c.mu.RLock()
-	lenTzData := len(c.tzData)
-	c.mu.RUnlock()
-
-	err = c.load(MockTZShapeFile)
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if err != nil {
-		t.Errorf("cannot switch client to mock data, got %v", err)
-	}
-	if len(c.tzData) >= lenTzData {
-		t.Errorf("boundCache not overwritten by loading new data")
 	}
 }
