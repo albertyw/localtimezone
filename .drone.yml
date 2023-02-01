@@ -14,16 +14,12 @@ steps:
       - exitcode="$?"
       - make cover
       - cc-test-reporter after-build --exit-code "$exitcode"
-      - curl -Os https://uploader.codecov.io/latest/linux/codecov
-      - chmod +x codecov
-      - ./codecov
       - make benchmark
       - make benchmark-getzone
       - make benchmark-clientinit
       - make cpuprof
       - make memprof
     environment:
-      CODECOV_TOKEN: 478ec348-c903-47c3-bbe9-c96c4af8c6f7
       CC_TEST_REPORTER_ID: 2444c4f6b2d06643187888a7f4deb545331d8ee6c7708a861b4d1de75ff87f7f
 
   - name: Test Makefile
