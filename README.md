@@ -3,8 +3,9 @@
 [![Build Status](https://drone.albertyw.com/api/badges/albertyw/localtimezone/status.svg)](https://drone.albertyw.com/albertyw/localtimezone)
 [![Go Documentation](https://godocs.io/github.com/albertyw/localtimezone/v3?status.svg)](https://godocs.io/github.com/albertyw/localtimezone/v3)
 [![Go Report Card](https://goreportcard.com/badge/github.com/albertyw/localtimezone/v3)](https://goreportcard.com/report/github.com/albertyw/localtimezone/v3)
+[![Maintainability](https://api.codeclimate.com/v1/badges/ce341d42186e116cd50c/maintainability)](https://codeclimate.com/github/albertyw/localtimezone/maintainability)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/ce341d42186e116cd50c/test_coverage)](https://codeclimate.com/github/albertyw/localtimezone/test_coverage)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![codecov](https://codecov.io/gh/albertyw/localtimezone/branch/master/graph/badge.svg?token=PUAW91J75K)](https://codecov.io/gh/albertyw/localtimezone)
 
 LatLong conversion to time zone.
 This is a fork of [github.com/ugjka/go-tz](https://github.com/ugjka/go-tz).

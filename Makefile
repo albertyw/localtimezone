@@ -5,7 +5,7 @@ all: test
 
 .PHONY:clean
 clean:
-	rm memprofile.out cpuprofile.out localtimezone.test coverage.txt || true
+	rm memprofile.out cpuprofile.out localtimezone.test c.out || true
 
 .PHONY:install-test-deps
 install-test-deps:
@@ -22,11 +22,12 @@ test: install-test-deps unit
 
 .PHONY:unit
 unit:
-	go test -coverprofile=coverage.txt -covermode=atomic ./...
+	go test -coverprofile=c.out -covermode=atomic ./...
 
 .PHONY:cover
 cover: test
-	go tool cover -func=coverage.txt
+	go tool cover -func=c.out
+	sed -i 's/github.com\/albertyw\/localtimezone\/v3\///g' c.out
 
 .PHONY:race
 race:
