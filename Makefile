@@ -9,7 +9,7 @@ clean:
 
 .PHONY:install-test-deps
 install-test-deps:
-	go install honnef.co/go/tools/cmd/staticcheck@v0.3.3
+	go install honnef.co/go/tools/cmd/staticcheck@v0.4.0
 	go install github.com/kisielk/errcheck@v1.6.3
 
 .PHONY:test
