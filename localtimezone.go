@@ -82,7 +82,6 @@ func init() {
 type LocalTimeZone interface {
 	GetZone(p Point) (tzids []string, err error)
 	GetOneZone(p Point) (tzid string, err error)
-	LoadGeoJSON(io.Reader) error
 }
 
 type tzData struct {
@@ -95,7 +94,6 @@ type tzData struct {
 type localTimeZone struct {
 	tzids  []string
 	tzData map[string]tzData
-	mu     sync.RWMutex
 }
 
 var _ LocalTimeZone = &localTimeZone{}
@@ -120,13 +118,22 @@ func NewMockLocalTimeZone() LocalTimeZone {
 	return &z
 }
 
+// NewCustomLocalTimeZone creates a new LocalTimeZone but based on custom
+// passed-in json data
+// The client is threadsafe
+func NewCustomLocalTimeZone(data io.Reader) (LocalTimeZone, error) {
+	z := localTimeZone{}
+	err := z.loadGeoJSON(data)
+	return &z, err
+}
+
 func (z *localTimeZone) load(shapeFile []byte) error {
 	g, err := gzip.NewReader(bytes.NewBuffer(shapeFile))
 	if err != nil {
 		return err
 	}
 
-	err = z.LoadGeoJSON(g)
+	err = z.loadGeoJSON(g)
 	_ = g.Close()
 	if err != nil {
 		return err
@@ -156,8 +163,6 @@ func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err e
 	if p[0] > 180 || p[0] < -180 || p[1] > 90 || p[1] < -90 {
 		return nil, ErrOutOfRange
 	}
-	z.mu.RLock()
-	defer z.mu.RUnlock()
 	for _, id := range z.tzids {
 		d := z.tzData[id]
 		if !d.bound.Contains(p) {
@@ -266,10 +271,8 @@ func (z *localTimeZone) buildCache(features []*geojson.Feature) {
 	sort.Strings(z.tzids)
 }
 
-// LoadGeoJSON loads a custom GeoJSON shapefile from a Reader
-func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
-	z.mu.Lock()
-
+// loadGeoJSON loads a custom GeoJSON shapefile from a Reader
+func (z *localTimeZone) loadGeoJSON(r io.Reader) error {
 	var buf bytes.Buffer
 	_, err := buf.ReadFrom(r)
 	if err != nil {
@@ -279,14 +282,10 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	if err != nil {
 		z.tzData = make(map[string]tzData)
 		z.tzids = []string{}
-		z.mu.Unlock()
 		return err
 	}
 	z.tzData = make(map[string]tzData, TZCount) // Possibly the incorrect length in case of Mock or custom data
 	z.tzids = []string{}                        // Cannot set a length or else array will be full of empty strings
-	go func(features []*geojson.Feature) {
-		defer z.mu.Unlock()
-		z.buildCache(features)
-	}(orbData.Features)
+	z.buildCache(orbData.Features)
 	return nil
 }
