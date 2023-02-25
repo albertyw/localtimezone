@@ -94,8 +94,9 @@ type tzData struct {
 }
 
 type immutableCache struct {
-	tzids  []string
-	tzData map[string]tzData
+	tzids    []string
+	tzData   map[string]tzData
+	tzBounds map[float64][]tzData
 }
 
 type localTimeZone struct {
@@ -162,14 +163,13 @@ func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err e
 		return nil, ErrOutOfRange
 	}
 	cache := z.data.Load()
-	for _, id := range cache.tzids {
-		d := cache.tzData[id]
+	for _, d := range cache.tzBounds[math.Floor(point.Lon)] {
 		if !d.bound.Contains(p) {
 			continue
 		}
 		if d.polygon != nil {
 			if planar.PolygonContains(*d.polygon, p) {
-				tzids = append(tzids, id)
+				tzids = append(tzids, d.tzid)
 				if single {
 					return
 				}
@@ -178,7 +178,7 @@ func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err e
 		}
 		if d.multiPolygon != nil {
 			if planar.MultiPolygonContains(*d.multiPolygon, p) {
-				tzids = append(tzids, id)
+				tzids = append(tzids, d.tzid)
 				if single {
 					return
 				}
@@ -228,6 +228,7 @@ func (z *localTimeZone) buildCache(features []*geojson.Feature) {
 	var wg sync.WaitGroup
 	var m sync.Mutex
 	tzDatas := make(map[string]tzData, len(features))
+	tzBounds := make(map[float64][]tzData)
 	for _, f := range features {
 		wg.Add(1)
 		go func(f *geojson.Feature) {
@@ -257,6 +258,9 @@ func (z *localTimeZone) buildCache(features []*geojson.Feature) {
 			d.centers = tzCenters
 			m.Lock()
 			tzDatas[id] = d
+			for lon := math.Floor(bound.Left()); lon < math.Ceil(bound.Right()); lon += 1 {
+				tzBounds[lon] = append(tzBounds[lon], d)
+			}
 			m.Unlock()
 		}(f)
 	}
@@ -269,9 +273,13 @@ func (z *localTimeZone) buildCache(features []*geojson.Feature) {
 		i++
 	}
 	sort.Strings(tzids)
+	for _, tzDatas := range tzBounds {
+		sort.Slice(tzDatas, func(i, j int) bool { return tzDatas[i].tzid < tzDatas[j].tzid })
+	}
 	cache := immutableCache{
-		tzData: tzDatas,
-		tzids:  tzids,
+		tzData:   tzDatas,
+		tzids:    tzids,
+		tzBounds: tzBounds,
 	}
 	z.data.Store(&cache)
 }
@@ -286,8 +294,9 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	orbData, err := geojson.UnmarshalFeatureCollection(buf.Bytes())
 	if err != nil {
 		cache := immutableCache{
-			tzData: make(map[string]tzData),
-			tzids:  []string{},
+			tzData:   make(map[string]tzData),
+			tzids:    []string{},
+			tzBounds: make(map[float64][]tzData),
 		}
 		z.data.Store(&cache)
 		return err
