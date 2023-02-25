@@ -101,8 +101,6 @@ func TestTzidPresent(t *testing.T) {
 	if !ok {
 		t.Error("error when initializing client")
 	}
-	z.mu.RLock()
-	defer z.mu.RUnlock()
 	_, ok = z.tzData["id"]
 	if ok {
 		t.Error("unexpected feature with empty tzid")
@@ -118,8 +116,6 @@ func TestPolygons(t *testing.T) {
 	if !ok {
 		t.Error("error when initializing client")
 	}
-	z.mu.RLock()
-	defer z.mu.RUnlock()
 	for tzid, d := range z.tzData {
 		if d.polygon != nil {
 			for _, ring := range *d.polygon {
@@ -140,13 +136,6 @@ func BenchmarkGetZone(b *testing.B) {
 	if err != nil {
 		b.Errorf("cannot initialize test cases: %v", err)
 	}
-
-	// Ensure client has finished loading data
-	_, err = client.GetZone(Point{0, 0})
-	if err != nil {
-		b.Errorf("cannot initialize timezone client: %v", err)
-	}
-
 	b.Run("GetZone on large cities", func(b *testing.B) {
 	Loop:
 		for n := 0; n < b.N; {
