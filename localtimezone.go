@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	_ "embed"
+	"encoding/gob"
 	"errors"
 	"fmt"
 	"io"
@@ -275,7 +276,11 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	orbData, err := geojson.UnmarshalFeatureCollection(buf.Bytes())
+	orbData := &geojson.FeatureCollection{}
+	gob.Register(orb.Polygon{})
+	gob.Register(orb.MultiPolygon{})
+	decoder := gob.NewDecoder(&buf)
+	err = decoder.Decode(orbData)
 	if err != nil {
 		z.tzData = make(map[string]tzData)
 		z.tzids = []string{}
