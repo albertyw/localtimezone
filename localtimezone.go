@@ -86,6 +86,7 @@ type LocalTimeZone interface {
 }
 
 type tzData struct {
+	tzid         string
 	polygon      *orb.Polygon
 	multiPolygon *orb.MultiPolygon
 	bound        *orb.Bound
@@ -233,7 +234,9 @@ func (z *localTimeZone) buildCache(features []*geojson.Feature) {
 			defer wg.Done()
 			id := f.Properties.MustString("tzid")
 			var multiPolygon orb.MultiPolygon
-			d := tzData{}
+			d := tzData{
+				tzid: id,
+			}
 			polygon, ok := f.Geometry.(orb.Polygon)
 			if ok {
 				d.polygon = &polygon
