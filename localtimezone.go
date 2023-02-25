@@ -94,9 +94,10 @@ type tzData struct {
 }
 
 type localTimeZone struct {
-	tzids  []string
-	tzData map[string]tzData
-	mu     sync.RWMutex
+	tzids    []string
+	tzData   map[string]tzData
+	tzBounds map[float64][]tzData
+	mu       sync.RWMutex
 }
 
 var _ LocalTimeZone = &localTimeZone{}
@@ -159,14 +160,13 @@ func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err e
 	}
 	z.mu.RLock()
 	defer z.mu.RUnlock()
-	for _, id := range z.tzids {
-		d := z.tzData[id]
+	for _, d := range z.tzBounds[math.Floor(point.Lon)] {
 		if !d.bound.Contains(p) {
 			continue
 		}
 		if d.polygon != nil {
 			if planar.PolygonContains(*d.polygon, p) {
-				tzids = append(tzids, id)
+				tzids = append(tzids, d.tzid)
 				if single {
 					return
 				}
@@ -175,7 +175,7 @@ func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err e
 		}
 		if d.multiPolygon != nil {
 			if planar.MultiPolygonContains(*d.multiPolygon, p) {
-				tzids = append(tzids, id)
+				tzids = append(tzids, d.tzid)
 				if single {
 					return
 				}
@@ -254,6 +254,9 @@ func (z *localTimeZone) buildCache(features []*geojson.Feature) {
 			d.centers = tzCenters
 			m.Lock()
 			z.tzData[id] = d
+			for lon := math.Floor(bound.Left()); lon < math.Ceil(bound.Right()); lon += 1 {
+				z.tzBounds[lon] = append(z.tzBounds[lon], d)
+			}
 			m.Unlock()
 		}(f)
 	}
@@ -267,6 +270,9 @@ func (z *localTimeZone) buildCache(features []*geojson.Feature) {
 		i++
 	}
 	sort.Strings(z.tzids)
+	for _, tzDatas := range z.tzBounds {
+		sort.Slice(tzDatas, func(i, j int) bool { return tzDatas[i].tzid < tzDatas[j].tzid })
+	}
 }
 
 // LoadGeoJSON loads a custom GeoJSON shapefile from a Reader
@@ -287,6 +293,7 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	}
 	z.tzData = make(map[string]tzData, TZCount) // Possibly the incorrect length in case of Mock or custom data
 	z.tzids = []string{}                        // Cannot set a length or else array will be full of empty strings
+	z.tzBounds = make(map[float64][]tzData)
 	go func(features []*geojson.Feature) {
 		defer z.mu.Unlock()
 		z.buildCache(features)
