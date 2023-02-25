@@ -414,7 +414,7 @@ func TestLoadGeoJSONMalformed(t *testing.T) {
 	if !ok {
 		t.Errorf("cannot initialize client")
 	}
-	err = c.LoadGeoJSON(reader)
+	err = c.loadGeoJSON(reader)
 	if err == nil {
 		t.Errorf("expected error, got %v", err)
 	}

@@ -82,7 +82,6 @@ func init() {
 type LocalTimeZone interface {
 	GetZone(p Point) (tzids []string, err error)
 	GetOneZone(p Point) (tzid string, err error)
-	LoadGeoJSON(io.Reader) error
 }
 
 type tzData struct {
@@ -125,7 +124,7 @@ func NewMockLocalTimeZone() LocalTimeZone {
 // The client is threadsafe
 func NewCustomLocalTimeZone(data io.Reader) (LocalTimeZone, error) {
 	z := localTimeZone{}
-	err := z.LoadGeoJSON(data)
+	err := z.loadGeoJSON(data)
 	return &z, err
 }
 
@@ -135,7 +134,7 @@ func (z *localTimeZone) load(shapeFile []byte) error {
 		return err
 	}
 
-	err = z.LoadGeoJSON(g)
+	err = z.loadGeoJSON(g)
 	_ = g.Close()
 	if err != nil {
 		return err
@@ -275,8 +274,8 @@ func (z *localTimeZone) buildCache(features []*geojson.Feature) {
 	sort.Strings(z.tzids)
 }
 
-// LoadGeoJSON loads a custom GeoJSON shapefile from a Reader
-func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
+// loadGeoJSON loads a custom GeoJSON shapefile from a Reader
+func (z *localTimeZone) loadGeoJSON(r io.Reader) error {
 	z.mu.Lock()
 
 	var buf bytes.Buffer
