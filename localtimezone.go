@@ -120,6 +120,15 @@ func NewMockLocalTimeZone() LocalTimeZone {
 	return &z
 }
 
+// NewCustomLocalTimeZone creates a new LocalTimeZone but based on custom
+// passed-in json data
+// The client is threadsafe
+func NewCustomLocalTimeZone(data io.Reader) (LocalTimeZone, error) {
+	z := localTimeZone{}
+	err := z.LoadGeoJSON(data)
+	return &z, err
+}
+
 func (z *localTimeZone) load(shapeFile []byte) error {
 	g, err := gzip.NewReader(bytes.NewBuffer(shapeFile))
 	if err != nil {
