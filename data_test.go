@@ -109,6 +109,28 @@ func TestTzidPresent(t *testing.T) {
 	}
 }
 
+func TestPolygons(t *testing.T) {
+	client, err := NewLocalTimeZone()
+	if err != nil {
+		t.Errorf("cannot initialize timezone client: %v", err)
+	}
+	z, ok := client.(*localTimeZone)
+	if !ok {
+		t.Error("error when initializing client")
+	}
+	z.mu.RLock()
+	defer z.mu.RUnlock()
+	for tzid, d := range z.tzData {
+		if d.polygon != nil {
+			for _, ring := range *d.polygon {
+				if len(ring) < 4 {
+					t.Errorf("expected polygon %s ring to have >= 4 coordinates, instead has %d", tzid, len(ring))
+				}
+			}
+		}
+	}
+}
+
 func BenchmarkGetZone(b *testing.B) {
 	client, err := NewLocalTimeZone()
 	if err != nil {
