@@ -273,8 +273,13 @@ func BenchmarkZones(b *testing.B) {
 	if !ok {
 		b.Errorf("cannot initialize timezone client")
 	}
-	z.mu.RLock()
-	z.mu.RUnlock() //lint:ignore SA2001 Make sure client has loaded
+
+	// Ensure client has finished loading data
+	_, err = z.GetZone(Point{0, 0})
+	if err != nil {
+		b.Errorf("cannot initialize timezone client: %v", err)
+	}
+
 	b.Run("polygon centers", func(b *testing.B) {
 	Loop:
 		for n := 0; n < b.N; {
@@ -325,7 +330,7 @@ func BenchmarkClientInit(b *testing.B) {
 				b.Errorf("cannot initialize timezone client")
 			}
 			cStruct.mu.RLock()
-			cStruct.mu.RUnlock() //lint:ignore SA2001 Wait for the client to load
+			defer cStruct.mu.RUnlock()
 			n++
 		}
 	})
@@ -337,7 +342,7 @@ func BenchmarkClientInit(b *testing.B) {
 				b.Errorf("cannot initialize timezone client")
 			}
 			cStruct.mu.RLock()
-			cStruct.mu.RUnlock() //lint:ignore SA2001 Wait for the client to load
+			defer cStruct.mu.RUnlock()
 			n++
 		}
 	})
