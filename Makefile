@@ -11,6 +11,7 @@ clean:
 install-test-deps:
 	go install honnef.co/go/tools/cmd/staticcheck@v0.4.0
 	go install github.com/kisielk/errcheck@v1.6.3
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin
 
 .PHONY:test
 test: install-test-deps unit
@@ -19,6 +20,7 @@ test: install-test-deps unit
 	errcheck -asserts ./...
 	gofmt -e -l -d -s .
 	go mod tidy
+	golangci-lint run ./...
 
 .PHONY:unit
 unit:
