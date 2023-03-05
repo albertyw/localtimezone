@@ -2,3 +2,7 @@ run:
   skip-files:
     - ".*/pkg"
     - ".*/usr"
+
+linters-settings:
+  staticcheck:
+    checks: ["all"]
