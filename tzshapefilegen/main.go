@@ -131,7 +131,7 @@ func orbExec(combinedJSON []byte) ([]byte, int, error) {
 		if tzid := feature.Properties.MustString("tzid"); tzid == "" {
 			break
 		}
-		feature.Geometry = simplify.VisvalingamThreshold(0.0001).Simplify(feature.Geometry)
+		feature.Geometry = simplify.Visvalingam(0.0001, 4).Simplify(feature.Geometry)
 		features = append(features, feature)
 	}
 	fc.Features = features
