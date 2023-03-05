@@ -3,7 +3,7 @@ package localtimezone_test
 import (
 	"fmt"
 
-	"github.com/albertyw/localtimezone/v3"
+	localtimezone "github.com/albertyw/localtimezone/v3"
 )
 
 func ExampleLocalTimeZone_GetZone() {
