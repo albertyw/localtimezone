@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+v3.1.2 (2023-03-06)
+-------------------
+
+ - Fixed an issue where boundaries of small timezones (i.e. `Europe/Vatican`) would be oversimplified to have zero area and not be valid.
+ - Various CI updates and optimizations
+
+
 v3.1.1 (2023-01-07)
 -------------------
 
