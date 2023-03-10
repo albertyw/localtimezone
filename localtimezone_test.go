@@ -171,6 +171,14 @@ var tt = []struct {
 			err:   ErrOutOfRange,
 		},
 	},
+	{
+		"Null Island",
+		Point{0.0, 0.0},
+		result{
+			zones: []string{"Etc/GMT"},
+			err:   nil,
+		},
+	},
 }
 
 func TestGetZone(t *testing.T) {
