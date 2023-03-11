@@ -15,6 +15,7 @@ import (
 
 	json "github.com/json-iterator/go"
 	"github.com/paulmach/orb/geojson"
+	"github.com/paulmach/orb/project"
 	"github.com/paulmach/orb/simplify"
 )
 
@@ -131,7 +132,8 @@ func orbExec(combinedJSON []byte) ([]byte, int, error) {
 		if tzid := feature.Properties.MustString("tzid"); tzid == "" {
 			break
 		}
-		feature.Geometry = simplify.Visvalingam(0.0001, 4).Simplify(feature.Geometry)
+		mercatorGeometry := project.Geometry(feature.Geometry, project.WGS84.ToMercator)
+		feature.Geometry = simplify.Visvalingam(0.0001, 4).Simplify(mercatorGeometry)
 		features = append(features, feature)
 	}
 	fc.Features = features

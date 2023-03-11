@@ -32,6 +32,7 @@ import (
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geojson"
 	"github.com/paulmach/orb/planar"
+	"github.com/paulmach/orb/project"
 )
 
 // TZShapeFile is the data containing geographic shapes for timezone borders.
@@ -156,6 +157,8 @@ func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err e
 	if p[0] > 180 || p[0] < -180 || p[1] > 90 || p[1] < -90 {
 		return nil, ErrOutOfRange
 	}
+	p = project.Point(p, project.WGS84.ToMercator)
+	fmt.Println(p)
 	z.mu.RLock()
 	defer z.mu.RUnlock()
 	for _, id := range z.tzids {
