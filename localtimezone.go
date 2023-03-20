@@ -127,7 +127,10 @@ func (z *localTimeZone) load(shapeFile []byte) error {
 	}
 
 	err = z.LoadGeoJSON(g)
-	_ = g.Close()
+	if err != nil {
+		return err
+	}
+	err = g.Close()
 	if err != nil {
 		return err
 	}
