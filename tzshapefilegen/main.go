@@ -28,6 +28,10 @@ const TZBoundaryVersion = "%s"
 
 // TZCount is the number of tzdata timezones supported
 const TZCount = %d
+
+// TZNames is an array of possible timezone names that may be returned by this library
+var TZNames = []string{
+%s}
 `
 const defaultRelease = "default"
 
@@ -117,31 +121,34 @@ func getGeoJSON(releaseURL string) ([]byte, error) {
 	return geojsonData, nil
 }
 
-func orbExec(combinedJSON []byte) ([]byte, int, error) {
+func orbExec(combinedJSON []byte) ([]byte, int, []string, error) {
 	geojson.CustomJSONMarshaler = json.ConfigFastest
 	geojson.CustomJSONUnmarshaler = json.ConfigFastest
 
 	fc, err := geojson.UnmarshalFeatureCollection(combinedJSON)
 	if err != nil {
 		log.Printf("Error: could not parse combined.json: %v\n", err)
-		return nil, 0, err
+		return nil, 0, nil, err
 	}
 	features := []*geojson.Feature{}
+	tzNames := []string{}
 	for _, feature := range fc.Features {
-		if tzid := feature.Properties.MustString("tzid"); tzid == "" {
+		tzid := feature.Properties.MustString("tzid")
+		if tzid == "" {
 			break
 		}
 		feature.Geometry = simplify.Visvalingam(0.0001, 4).Simplify(feature.Geometry)
 		features = append(features, feature)
+		tzNames = append(tzNames, tzid)
 	}
 	fc.Features = features
 	tzCount := len(fc.Features)
 	reducedJSON, err := fc.MarshalJSON()
 	if err != nil {
 		log.Printf("Error: could not marshal reduced.json: %v\n", err)
-		return nil, 0, err
+		return nil, 0, nil, err
 	}
-	return reducedJSON, tzCount, nil
+	return reducedJSON, tzCount, tzNames, nil
 }
 
 func generateData(geoJSON []byte) ([]byte, error) {
@@ -174,8 +181,12 @@ func writeData(content []byte) error {
 	return nil
 }
 
-func writeVersion(release string, tzCount int) error {
-	content := fmt.Sprintf(versionTemplate, release, tzCount)
+func writeVersion(release string, tzCount int, tzNames []string) error {
+	tzNamesFormatted := ""
+	for _, tzid := range tzNames {
+		tzNamesFormatted += fmt.Sprintf("	%q,\n", tzid)
+	}
+	content := fmt.Sprintf(versionTemplate, release, tzCount, tzNamesFormatted)
 	outfile, err := os.Create("version.go")
 	if err != nil {
 		log.Printf("Error: could not create version.go: %v", err)
@@ -217,7 +228,7 @@ func main() {
 	}
 
 	fmt.Println("*** SIMPLIFYING GEOJSON ***")
-	geojsonData, tzCount, err := orbExec(geojsonData)
+	geojsonData, tzCount, tzNames, err := orbExec(geojsonData)
 	if err != nil {
 		return
 	}
@@ -234,7 +245,7 @@ func main() {
 		return
 	}
 
-	err = writeVersion(*release, tzCount)
+	err = writeVersion(*release, tzCount, tzNames)
 	if err != nil {
 		return
 	}
