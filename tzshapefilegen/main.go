@@ -142,6 +142,9 @@ func orbExec(combinedJSON []byte) ([]byte, int, []string, error) {
 		features = append(features, feature)
 		tzNames = append(tzNames, tzid)
 	}
+	sort.Slice(features, func(i, j int) bool {
+		return features[i].Properties.MustString("tzid") < features[j].Properties.MustString("tzid")
+	})
 	fc.Features = features
 	tzCount := len(fc.Features)
 	reducedJSON, err := fc.MarshalJSON()
