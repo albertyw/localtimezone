@@ -122,14 +122,14 @@ func getGeoJSON(releaseURL string) ([]byte, error) {
 	return geojsonData, nil
 }
 
-func orbExec(combinedJSON []byte) ([]byte, int, []string, error) {
+func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 	geojson.CustomJSONMarshaler = json.ConfigFastest
 	geojson.CustomJSONUnmarshaler = json.ConfigFastest
 
 	fc, err := geojson.UnmarshalFeatureCollection(combinedJSON)
 	if err != nil {
 		log.Printf("Error: could not parse combined.json: %v\n", err)
-		return nil, 0, nil, err
+		return nil, nil, err
 	}
 	features := []*geojson.Feature{}
 	tzNames := []string{}
@@ -146,18 +146,17 @@ func orbExec(combinedJSON []byte) ([]byte, int, []string, error) {
 		return features[i].Properties.MustString("tzid") < features[j].Properties.MustString("tzid")
 	})
 	fc.Features = features
-	tzCount := len(fc.Features)
 	reducedJSON, err := fc.MarshalJSON()
 	if err != nil {
 		log.Printf("Error: could not marshal reduced.json: %v\n", err)
-		return nil, 0, nil, err
+		return nil, nil, err
 	}
 	tzNames = append(tzNames, "Etc/GMT")
 	for offset := 1; offset <= 12; offset += 1 {
 		tzNames = append(tzNames, fmt.Sprintf("Etc/GMT+%d", offset), fmt.Sprintf("Etc/GMT-%d", offset))
 	}
 	sort.Strings(tzNames)
-	return reducedJSON, tzCount, tzNames, nil
+	return reducedJSON, tzNames, nil
 }
 
 func generateData(geoJSON []byte) ([]byte, error) {
@@ -190,12 +189,12 @@ func writeData(content []byte) error {
 	return nil
 }
 
-func writeVersion(release string, tzCount int, tzNames []string) error {
+func writeVersion(release string, tzNames []string) error {
 	tzNamesFormatted := ""
 	for _, tzid := range tzNames {
 		tzNamesFormatted += fmt.Sprintf("	%q,\n", tzid)
 	}
-	content := fmt.Sprintf(versionTemplate, release, tzCount, tzNamesFormatted)
+	content := fmt.Sprintf(versionTemplate, release, len(tzNames), tzNamesFormatted)
 	outfile, err := os.Create("version.go")
 	if err != nil {
 		log.Printf("Error: could not create version.go: %v", err)
@@ -237,7 +236,7 @@ func main() {
 	}
 
 	fmt.Println("*** SIMPLIFYING GEOJSON ***")
-	geojsonData, tzCount, tzNames, err := orbExec(geojsonData)
+	geojsonData, tzNames, err := orbExec(geojsonData)
 	if err != nil {
 		return
 	}
@@ -254,7 +253,7 @@ func main() {
 		return
 	}
 
-	err = writeVersion(*release, tzCount, tzNames)
+	err = writeVersion(*release, tzNames)
 	if err != nil {
 		return
 	}

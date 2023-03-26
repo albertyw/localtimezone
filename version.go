@@ -6,7 +6,7 @@ package localtimezone
 const TZBoundaryVersion = "2023b"
 
 // TZCount is the number of tzdata timezones supported
-const TZCount = 419
+const TZCount = 444
 
 // TZNames is an array of possible timezone names that may be returned by this library
 var TZNames = []string{
