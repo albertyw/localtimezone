@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sort"
 
 	json "github.com/json-iterator/go"
 	"github.com/paulmach/orb/geojson"
@@ -152,6 +153,7 @@ func orbExec(combinedJSON []byte) ([]byte, int, []string, error) {
 	for offset := 1; offset <= 12; offset += 1 {
 		tzNames = append(tzNames, fmt.Sprintf("Etc/GMT+%d", offset), fmt.Sprintf("Etc/GMT-%d", offset))
 	}
+	sort.Strings(tzNames)
 	return reducedJSON, tzCount, tzNames, nil
 }
 
