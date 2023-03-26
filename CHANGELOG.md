@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+v3.1.3 (2023-03-26)
+-------------------
+
+ - Update to tzdata 2023b
+ - Add a new `TZNames` array to show all possible timezones that may be returned by this library
+
+
 v3.1.2 (2023-03-06)
 -------------------
 
