@@ -228,6 +228,7 @@ func main() {
 	} else {
 		releaseURL = fmt.Sprintf(dlURL, *release)
 	}
+	fmt.Printf("Downloading %s\n", releaseURL)
 
 	fmt.Println("*** GETTING TIMEZONE BOUNDARY DATA ***")
 	geojsonData, err := getGeoJSON(releaseURL)
