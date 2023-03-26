@@ -148,6 +148,10 @@ func orbExec(combinedJSON []byte) ([]byte, int, []string, error) {
 		log.Printf("Error: could not marshal reduced.json: %v\n", err)
 		return nil, 0, nil, err
 	}
+	tzNames = append(tzNames, "Etc/GMT")
+	for offset := 1; offset <= 12; offset += 1 {
+		tzNames = append(tzNames, fmt.Sprintf("Etc/GMT+%d", offset), fmt.Sprintf("Etc/GMT-%d", offset))
+	}
 	return reducedJSON, tzCount, tzNames, nil
 }
 
