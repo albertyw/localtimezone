@@ -17,6 +17,8 @@ test: install-test-deps unit
 	gofmt -e -l -d -s .
 	go mod tidy
 	golangci-lint run ./...
+	go install golang.org/x/vuln/cmd/govulncheck@latest
+	govulncheck ./...
 
 .PHONY:unit
 unit:
