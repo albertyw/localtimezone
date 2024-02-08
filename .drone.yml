@@ -39,7 +39,7 @@ name: tzdata-check
 
 steps:
   - name: Check TZData Freshness
-    image: golang:1.21
+    image: golang:1.22
     commands:
       - make test
 trigger:
