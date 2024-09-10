@@ -1,4 +1,4 @@
-run:
+issues:
   skip-files:
     - ".*/pkg"
     - ".*/usr"
