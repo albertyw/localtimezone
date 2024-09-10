@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+v3.1.6 (2024-09-10)
+-------------------
+
+ - Update to tzdata 2024b
+ - Update dependencies
+ - Officially support Go 1.23
+
+
 v3.1.5 (2024-03-16)
 -------------------
 
