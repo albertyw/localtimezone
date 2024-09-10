@@ -1,6 +1,6 @@
 module github.com/albertyw/localtimezone/v3
 
-go 1.22
+go 1.23
 
 require (
 	github.com/json-iterator/go v1.1.12
