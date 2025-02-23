@@ -290,18 +290,14 @@ func BenchmarkZones(b *testing.B) {
 		for _, d := range z.tzData {
 			centers = append(centers, d.centers...)
 		}
-	Loop:
-		for n := 0; n < b.N; {
-			for _, cs := range centers {
-				if n > b.N {
-					break Loop
-				}
-				_, err := z.GetZone(pointFromOrb(cs))
-				if err != nil {
-					b.Errorf("point %v did not return a zone", centers)
-				}
-				n++
+		n := 0
+		for b.Loop() {
+			cs := centers[n%len(centers)]
+			_, err := z.GetZone(pointFromOrb(cs))
+			if err != nil {
+				b.Errorf("point %v did not return a zone", centers)
 			}
+			n++
 		}
 	})
 	b.Run("test cases", func(b *testing.B) {
@@ -312,26 +308,21 @@ func BenchmarkZones(b *testing.B) {
 			}
 			points = append(points, tc.point)
 		}
-	Loop:
-		for n := 0; n < b.N; {
-			for _, point := range points {
-				if n > b.N {
-					break Loop
-				}
-				_, err := z.GetZone(point)
-				if err != nil {
-					b.Errorf("point %v did not return a zone", point)
-				}
-				n++
+		n := 0
+		for b.Loop() {
+			point := points[n%len(points)]
+			_, err := z.GetZone(point)
+			if err != nil {
+				b.Errorf("point %v did not return a zone", point)
 			}
-
+			n++
 		}
 	})
 }
 
 func BenchmarkClientInit(b *testing.B) {
 	b.Run("main client", func(b *testing.B) {
-		for n := 0; n < b.N; {
+		for b.Loop() {
 			c, err := NewLocalTimeZone()
 			if err != nil {
 				b.Errorf("client could not initialize because of %v", err)
@@ -342,11 +333,10 @@ func BenchmarkClientInit(b *testing.B) {
 			}
 			cStruct.mu.RLock()
 			defer cStruct.mu.RUnlock()
-			n++
 		}
 	})
 	b.Run("mock client", func(b *testing.B) {
-		for n := 0; n < b.N; {
+		for b.Loop() {
 			c := NewMockLocalTimeZone()
 			cStruct, ok := c.(*localTimeZone)
 			if !ok {
@@ -354,7 +344,6 @@ func BenchmarkClientInit(b *testing.B) {
 			}
 			cStruct.mu.RLock()
 			defer cStruct.mu.RUnlock()
-			n++
 		}
 	})
 }
