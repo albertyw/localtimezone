@@ -289,35 +289,43 @@ func BenchmarkZones(b *testing.B) {
 	}
 
 	b.Run("polygon centers", func(b *testing.B) {
+		centers := []orb.Point{}
+		for _, d := range z.tzData {
+			for _, cs := range d.centers {
+				centers = append(centers, cs)
+			}
+		}
 	Loop:
 		for n := 0; n < b.N; {
-			for _, d := range z.tzData {
-				for _, centers := range d.centers {
-					if n > b.N {
-						break Loop
-					}
-					_, err := z.GetZone(pointFromOrb(centers))
-					if err != nil {
-						b.Errorf("point %v did not return a zone", centers)
-					}
-					n++
+			for _, cs := range centers {
+				if n > b.N {
+					break Loop
 				}
+				_, err := z.GetZone(pointFromOrb(cs))
+				if err != nil {
+					b.Errorf("point %v did not return a zone", centers)
+				}
+				n++
 			}
 		}
 	})
 	b.Run("test cases", func(b *testing.B) {
+		points := make([]Point, len(tt))
+		for _, tc := range tt {
+			if tc.err != nil {
+				continue
+			}
+			points = append(points, tc.point)
+		}
 	Loop:
 		for n := 0; n < b.N; {
-			for _, tc := range tt {
-				if tc.err != nil {
-					continue
-				}
+			for _, point := range points {
 				if n > b.N {
 					break Loop
 				}
-				_, err := z.GetZone(tc.point)
+				_, err := z.GetZone(point)
 				if err != nil {
-					b.Errorf("point %v did not return a zone", tc.point)
+					b.Errorf("point %v did not return a zone", point)
 				}
 				n++
 			}
