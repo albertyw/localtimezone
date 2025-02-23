@@ -148,41 +148,33 @@ func BenchmarkGetZone(b *testing.B) {
 	}
 
 	b.Run("GetZone on large cities", func(b *testing.B) {
-	Loop:
-		for n := 0; n < b.N; {
-			for _, tc := range data {
-				if n > b.N {
-					break Loop
-				}
-				point := Point{
-					Lon: tc.Lon,
-					Lat: tc.Lat,
-				}
-				_, err = client.GetZone(point)
-				if err != nil {
-					b.Errorf("point %v did not return a zone", point)
-				}
-				n++
+		n := 0
+		for b.Loop() {
+			tc := data[n%len(data)]
+			point := Point{
+				Lon: tc.Lon,
+				Lat: tc.Lat,
 			}
+			_, err = client.GetZone(point)
+			if err != nil {
+				b.Errorf("point %v did not return a zone", point)
+			}
+			n += 1
 		}
 	})
 	b.Run("GetOneZone on large cities", func(b *testing.B) {
-	Loop:
-		for n := 0; n < b.N; {
-			for _, tc := range data {
-				if n > b.N {
-					break Loop
-				}
-				point := Point{
-					Lon: tc.Lon,
-					Lat: tc.Lat,
-				}
-				_, err = client.GetOneZone(point)
-				if err != nil {
-					b.Errorf("point %v did not return a zone", point)
-				}
-				n++
+		n := 0
+		for b.Loop() {
+			tc := data[n%len(data)]
+			point := Point{
+				Lon: tc.Lon,
+				Lat: tc.Lat,
 			}
+			_, err = client.GetOneZone(point)
+			if err != nil {
+				b.Errorf("point %v did not return a zone", point)
+			}
+			n++
 		}
 	})
 }
