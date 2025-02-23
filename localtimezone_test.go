@@ -291,9 +291,7 @@ func BenchmarkZones(b *testing.B) {
 	b.Run("polygon centers", func(b *testing.B) {
 		centers := []orb.Point{}
 		for _, d := range z.tzData {
-			for _, cs := range d.centers {
-				centers = append(centers, cs)
-			}
+			centers = append(centers, d.centers...)
 		}
 	Loop:
 		for n := 0; n < b.N; {
