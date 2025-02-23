@@ -188,7 +188,6 @@ func TestGetZone(t *testing.T) {
 		t.Errorf("cannot initialize timezone client: %v", err)
 	}
 	for _, tc := range tt {
-		tc := tc // Remove race condition over test fields
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			tzids, err := z.GetZone(tc.point)
@@ -217,7 +216,6 @@ func TestGetOneZone(t *testing.T) {
 		t.Errorf("cannot initialize timezone client: %v", err)
 	}
 	for _, tc := range tt {
-		tc := tc // Remove race condition over test fields
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			tzid, err := z.GetOneZone(tc.point)
@@ -240,7 +238,6 @@ func TestGetOneZone(t *testing.T) {
 func TestMockLocalTimeZone(t *testing.T) {
 	z := NewMockLocalTimeZone()
 	for _, tc := range tt {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			tzids, err := z.GetZone(tc.point)
@@ -380,7 +377,6 @@ func TestNautical(t *testing.T) {
 		{-7.5, "Etc/GMT+1"},
 	}
 	for _, tc := range tt {
-		tc := tc // Remove race condition over test fields
 		t.Run(fmt.Sprintf("%f %s", tc.lon, tc.zone), func(t *testing.T) {
 			t.Parallel()
 			z, _ := getNauticalZone(orb.Point{tc.lon, 0})
@@ -411,7 +407,6 @@ func TestOutOfRange(t *testing.T) {
 		{Point{0, -91}, ErrOutOfRange},
 	}
 	for _, tc := range tt {
-		tc := tc // Remove race condition over test fields
 		t.Run(fmt.Sprintf("%f %f", tc.p.Lon, tc.p.Lat), func(t *testing.T) {
 			t.Parallel()
 			_, err := z.GetZone(tc.p)
