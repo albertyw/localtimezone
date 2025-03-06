@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+v3.1.8 (2025-03-015)
+--------------------
+
+ - Officially support Go 1.24
+ - Update dependencies
+ - Various test cleanup
+
+
 v3.1.7 (2025-01-20)
 -------------------
 
