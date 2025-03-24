@@ -3,10 +3,10 @@
 package localtimezone
 
 // TZBoundaryVersion is the version of tzdata that was used to generate timezone boundaries
-const TZBoundaryVersion = "2025a"
+const TZBoundaryVersion = "2025b"
 
 // TZCount is the number of tzdata timezones supported
-const TZCount = 443
+const TZCount = 444
 
 // TZNames is an array of possible timezone names that may be returned by this library
 var TZNames = []string{
@@ -101,6 +101,7 @@ var TZNames = []string{
 	"America/Chihuahua",
 	"America/Ciudad_Juarez",
 	"America/Costa_Rica",
+	"America/Coyhaique",
 	"America/Creston",
 	"America/Cuiaba",
 	"America/Curacao",
