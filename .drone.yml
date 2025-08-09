@@ -6,21 +6,19 @@ steps:
   - name: Test Go
     image: golang:1.24
     commands:
-      - curl -L "https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-$(dpkg --print-architecture)" > "${HOME}/bin/cc-test-reporter"
-      - chmod +x "${HOME}/bin/cc-test-reporter"
-      - cc-test-reporter before-build
+      - apt-get update && apt-get install -y xz-utils
+      - curl https://qlty.sh | sh
       - make test
       - make race
-      - exitcode="$?"
       - make cover
-      - cc-test-reporter after-build --exit-code "$exitcode"
+      - ~/.qlty/bin/qlty coverage publish c.out --override-commit-sha "$DRONE_COMMIT_SHA" --override-branch "$DRONE_BRANCH" --override-build-id "$DRONE_BUILD_NUMBER"
       - make benchmark
       - make benchmark-getzone
       - make benchmark-clientinit
       - make cpuprof
       - make memprof
     environment:
-      CC_TEST_REPORTER_ID: 2444c4f6b2d06643187888a7f4deb545331d8ee6c7708a861b4d1de75ff87f7f
+      QLTY_COVERAGE_TOKEN: qltcp_uIuuaUGXGn8sqEI0
 
   - name: Test Makefile
     image: cytopia/checkmake:latest
