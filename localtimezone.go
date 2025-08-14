@@ -223,7 +223,6 @@ func getNauticalZone(point orb.Point) (tzids []string, err error) {
 func (z *localTimeZone) buildCache(features []*geojson.Feature) {
 	var wg sync.WaitGroup
 	var m sync.Mutex
-	m.Lock()
 	for _, f := range features {
 		wg.Add(1)
 		go func(f *geojson.Feature) {
@@ -254,7 +253,6 @@ func (z *localTimeZone) buildCache(features []*geojson.Feature) {
 			m.Unlock()
 		}(f)
 	}
-	m.Unlock()
 	wg.Wait()
 
 	z.tzids = make([]string, len(z.tzData))
