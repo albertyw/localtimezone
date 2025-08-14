@@ -4,7 +4,7 @@ name: test
 
 steps:
   - name: Test Go
-    image: golang:1.24
+    image: golang:1.25
     commands:
       - apt-get update && apt-get install -y xz-utils
       - curl https://qlty.sh | sh
@@ -37,7 +37,7 @@ name: tzdata-check
 
 steps:
   - name: Check TZData Freshness
-    image: golang:1.24
+    image: golang:1.25
     commands:
       - make test
 trigger:
