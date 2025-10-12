@@ -101,8 +101,6 @@ func TestTzidPresent(t *testing.T) {
 	if !ok {
 		t.Error("error when initializing client")
 	}
-	z.mu.RLock()
-	defer z.mu.RUnlock()
 	_, ok = z.data.Load().tzData["id"]
 	if ok {
 		t.Error("unexpected feature with empty tzid")
@@ -118,8 +116,6 @@ func TestPolygons(t *testing.T) {
 	if !ok {
 		t.Error("error when initializing client")
 	}
-	z.mu.RLock()
-	defer z.mu.RUnlock()
 	for tzid, d := range z.data.Load().tzData {
 		if d.polygon != nil {
 			for _, ring := range *d.polygon {

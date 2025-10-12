@@ -100,7 +100,6 @@ type immutableCache struct {
 
 type localTimeZone struct {
 	data atomic.Pointer[immutableCache]
-	mu   sync.RWMutex
 }
 
 var _ LocalTimeZone = &localTimeZone{}
@@ -162,8 +161,6 @@ func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err e
 	if p[0] > 180 || p[0] < -180 || p[1] > 90 || p[1] < -90 {
 		return nil, ErrOutOfRange
 	}
-	z.mu.RLock()
-	defer z.mu.RUnlock()
 	cache := z.data.Load()
 	for _, id := range cache.tzids {
 		d := cache.tzData[id]
@@ -279,9 +276,6 @@ func (z *localTimeZone) buildCache(features []*geojson.Feature) {
 
 // LoadGeoJSON loads a custom GeoJSON shapefile from a Reader
 func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
-	z.mu.Lock()
-	defer z.mu.Unlock()
-
 	var buf bytes.Buffer
 	_, err := buf.ReadFrom(r)
 	if err != nil {
