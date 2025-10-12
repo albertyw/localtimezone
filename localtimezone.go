@@ -29,7 +29,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	json "github.com/json-iterator/go"
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geojson"
 	"github.com/paulmach/orb/planar"
@@ -76,7 +75,7 @@ func pointToOrb(p Point) orb.Point {
 
 func init() {
 	// Set a faster json unmarshaller
-	geojson.CustomJSONUnmarshaler = json.ConfigFastest
+	geojson.CustomJSONUnmarshaler = unmarshaler{}
 }
 
 // LocalTimeZone is a client for looking up time zones by Points

@@ -14,7 +14,7 @@ import (
 	"os"
 	"sort"
 
-	json "github.com/json-iterator/go"
+	"github.com/goccy/go-json"
 	"github.com/paulmach/orb/geojson"
 	"github.com/paulmach/orb/simplify"
 )
@@ -123,8 +123,8 @@ func getGeoJSON(releaseURL string) ([]byte, error) {
 }
 
 func orbExec(combinedJSON []byte) ([]byte, []string, error) {
-	geojson.CustomJSONMarshaler = json.ConfigFastest
-	geojson.CustomJSONUnmarshaler = json.ConfigFastest
+	geojson.CustomJSONMarshaler = marshaler{}
+	geojson.CustomJSONUnmarshaler = marshaler{}
 
 	fc, err := geojson.UnmarshalFeatureCollection(combinedJSON)
 	if err != nil {
