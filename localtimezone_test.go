@@ -284,10 +284,11 @@ func BenchmarkZones(b *testing.B) {
 	if err != nil {
 		b.Errorf("cannot initialize timezone client: %v", err)
 	}
+	cache := z.data.Load()
 
 	b.Run("polygon centers", func(b *testing.B) {
 		centers := []orb.Point{}
-		for _, d := range z.tzData {
+		for _, d := range cache.tzData {
 			centers = append(centers, d.centers...)
 		}
 		n := 0
@@ -327,23 +328,19 @@ func BenchmarkClientInit(b *testing.B) {
 			if err != nil {
 				b.Errorf("client could not initialize because of %v", err)
 			}
-			cStruct, ok := c.(*localTimeZone)
+			_, ok := c.(*localTimeZone)
 			if !ok {
 				b.Errorf("cannot initialize timezone client")
 			}
-			cStruct.mu.RLock()
-			defer cStruct.mu.RUnlock()
 		}
 	})
 	b.Run("mock client", func(b *testing.B) {
 		for b.Loop() {
 			c := NewMockLocalTimeZone()
-			cStruct, ok := c.(*localTimeZone)
+			_, ok := c.(*localTimeZone)
 			if !ok {
 				b.Errorf("cannot initialize timezone client")
 			}
-			cStruct.mu.RLock()
-			defer cStruct.mu.RUnlock()
 		}
 	})
 }
@@ -421,13 +418,7 @@ func TestLoadGeoJSONMalformed(t *testing.T) {
 	if err == nil {
 		t.Errorf("expected error, got %v", err)
 	}
-	unlocked := c.mu.TryLock()
-	if !unlocked {
-		t.Errorf("expected lock to be released")
-	}
-	defer c.mu.Unlock()
-
-	if len(c.tzData) != 0 {
+	if len(c.data.Load().tzData) != 0 {
 		t.Errorf("tzData not reset")
 	}
 }
@@ -441,17 +432,13 @@ func TestLoadOverwrite(t *testing.T) {
 	if !ok {
 		t.Errorf("cannot initialize client")
 	}
-	c.mu.RLock()
-	lenTzData := len(c.tzData)
-	c.mu.RUnlock()
+	lenTzData := len(c.data.Load().tzData)
 
 	err = c.load(MockTZShapeFile)
-	c.mu.RLock()
-	defer c.mu.RUnlock()
 	if err != nil {
 		t.Errorf("cannot switch client to mock data, got %v", err)
 	}
-	if len(c.tzData) >= lenTzData {
+	if len(c.data.Load().tzData) >= lenTzData {
 		t.Errorf("boundCache not overwritten by loading new data")
 	}
 }
