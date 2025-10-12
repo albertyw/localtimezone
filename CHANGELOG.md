@@ -1,6 +1,16 @@
 CHANGELOG
 =========
 
+v3.1.10 (2025-10-12)
+--------------------
+
+ - Optimize json encoding/decoding
+ - Optimize away RWMutex
+ - Officially support Go 1.25
+ - Update dependencies
+ - Switch from codeclimate to qlty
+
+
 v3.1.9 (2025-03-24)
 -------------------
 
