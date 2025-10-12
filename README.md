@@ -49,7 +49,7 @@ GeoJson Simplification done with [orb](https://github.com/paulmach/orb).
 Get the most current timezone release version at https://github.com/evansiroky/timezone-boundary-builder/tags
 
 ```bash
-go run tzshapefilegen/main.go
+make generate
 ```
 
 ## Licenses

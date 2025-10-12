@@ -3,6 +3,10 @@ SHELL := /bin/bash
 .PHONY:all
 all: test
 
+.PHONY:generate
+generate:
+	go generate
+
 .PHONY:clean
 clean:
 	rm memprofile.out cpuprofile.out localtimezone.test c.out || true
