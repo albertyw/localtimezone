@@ -15,7 +15,9 @@ import (
 	"sort"
 
 	json "github.com/json-iterator/go"
+	"github.com/paulmach/orb/encoding/mvt"
 	"github.com/paulmach/orb/geojson"
+	"github.com/paulmach/orb/maptile"
 	"github.com/paulmach/orb/simplify"
 )
 
@@ -123,8 +125,8 @@ func getGeoJSON(releaseURL string) ([]byte, error) {
 }
 
 func orbExec(combinedJSON []byte) ([]byte, []string, error) {
-	geojson.CustomJSONMarshaler = json.ConfigFastest
-	geojson.CustomJSONUnmarshaler = json.ConfigFastest
+	// geojson.CustomJSONMarshaler = json.ConfigFastest
+	// geojson.CustomJSONUnmarshaler = json.ConfigFastest
 
 	fc, err := geojson.UnmarshalFeatureCollection(combinedJSON)
 	if err != nil {
@@ -146,6 +148,32 @@ func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 		return features[i].Properties.MustString("tzid") < features[j].Properties.MustString("tzid")
 	})
 	fc.Features = features
+	fmt.Println(fc.Features[0].Geometry.Bound().Max)
+
+	// Convert to MVT and back to JSON to test MVT encoding/decoding
+
+	collections := map[string]*geojson.FeatureCollection{
+		"data": fc,
+	}
+	layers := mvt.NewLayers(collections)
+	baseMaptile := maptile.New(0, 0, 0)
+	layers.ProjectToTile(baseMaptile)
+	mvtMarshalled, err := mvt.Marshal(layers)
+	if err != nil {
+		return nil, nil, err
+	}
+	unmarshalledLayers, err := mvt.Unmarshal(mvtMarshalled)
+	if err != nil {
+		return nil, nil, err
+	}
+	unmarshalledLayers.ProjectToWGS84(baseMaptile)
+	unmarshalledCollections := unmarshalledLayers.ToFeatureCollections()
+	fc, ok := unmarshalledCollections["data"]
+	if !ok {
+		return nil, nil, err
+	}
+	fmt.Println(fc.Features[0].Geometry.Bound().Max)
+
 	reducedJSON, err := fc.MarshalJSON()
 	if err != nil {
 		log.Printf("Error: could not marshal reduced.json: %v\n", err)
