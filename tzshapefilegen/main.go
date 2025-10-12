@@ -15,6 +15,7 @@ import (
 	"sort"
 
 	json "github.com/json-iterator/go"
+	"github.com/paulmach/orb/encoding/mvt"
 	"github.com/paulmach/orb/geojson"
 	"github.com/paulmach/orb/simplify"
 )
@@ -146,7 +147,12 @@ func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 		return features[i].Properties.MustString("tzid") < features[j].Properties.MustString("tzid")
 	})
 	fc.Features = features
-	reducedJSON, err := fc.MarshalJSON()
+	data := map[string]*geojson.FeatureCollection{
+		"data": fc,
+	}
+	layers := mvt.NewLayers(data)
+	// layers.Simplify(simplify.VisvalingamThreshold(0.0001))
+	reducedJSON, err := mvt.Marshal(layers)
 	if err != nil {
 		log.Printf("Error: could not marshal reduced.json: %v\n", err)
 		return nil, nil, err

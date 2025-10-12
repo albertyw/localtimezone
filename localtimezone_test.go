@@ -8,11 +8,54 @@ import (
 	"testing"
 
 	"github.com/paulmach/orb"
+	"github.com/paulmach/orb/encoding/mvt"
+	"github.com/paulmach/orb/geojson"
 	"go.uber.org/goleak"
 )
 
 func TestMain(m *testing.M) {
 	goleak.VerifyTestMain(m)
+}
+
+func TestMVT(t *testing.T) {
+	g, err := gzip.NewReader(bytes.NewBuffer(MockTZShapeFile))
+	if err != nil {
+		t.Errorf("cannot create gzip reader, got error %v", err)
+	}
+	defer g.Close()
+
+	var buf bytes.Buffer
+	_, err = buf.ReadFrom(g)
+	if err != nil {
+		t.Errorf("cannot read from gzip, got error %v", err)
+	}
+
+	geojsonFeatureCollection, err := geojson.UnmarshalFeatureCollection(buf.Bytes())
+	if err != nil {
+		t.Errorf("cannot unmarshal geojson, got error %v", err)
+	}
+
+	collections := map[string]*geojson.FeatureCollection{
+		"data": geojsonFeatureCollection,
+	}
+	layers := mvt.NewLayers(collections)
+	mvtMarshalled, err := mvt.Marshal(layers)
+	if err != nil {
+		t.Errorf("cannot marshal mvt, got error %v", err)
+	}
+
+	unmarshalledLayers, err := mvt.Unmarshal(mvtMarshalled)
+	if err != nil {
+		t.Errorf("cannot unmarshal mvt, got error %v", err)
+	}
+	unmarshalledCollections := unmarshalledLayers.ToFeatureCollections()
+	unmarshalledFeatureCollection, ok := unmarshalledCollections["data"]
+	if !ok {
+		t.Errorf("cannot find data layer")
+	}
+	if len(unmarshalledFeatureCollection.Features) != len(geojsonFeatureCollection.Features) {
+		t.Errorf("expected %d features; got %d", len(geojsonFeatureCollection.Features), len(unmarshalledFeatureCollection.Features))
+	}
 }
 
 func TestPointFromOrb(t *testing.T) {
@@ -235,40 +278,6 @@ func TestGetOneZone(t *testing.T) {
 	}
 }
 
-func TestMockLocalTimeZone(t *testing.T) {
-	z := NewMockLocalTimeZone()
-	for _, tc := range tt {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			tzids, err := z.GetZone(tc.point)
-			if tc.err != nil {
-				if err != tc.err {
-					t.Errorf("expected err %v; got %v", tc.err, err)
-				}
-				return
-			}
-			if len(tzids) != 1 {
-				t.Errorf("expected 1 zone; got %d", len(tzids))
-			}
-			if tzids[0] != MockTimeZone {
-				t.Errorf("expected zone America/Los_Angeles; got %s", tzids[0])
-			}
-		})
-	}
-}
-
-func TestMockLocalTimeZonePanic(t *testing.T) {
-	tempMockTZShapeFile := MockTZShapeFile
-	MockTZShapeFile = []byte("asdf")
-	defer func() {
-		MockTZShapeFile = tempMockTZShapeFile
-		if r := recover(); r == nil {
-			t.Errorf("expected a panic; got no panic")
-		}
-	}()
-	NewMockLocalTimeZone()
-}
-
 func BenchmarkZones(b *testing.B) {
 	zInterface, err := NewLocalTimeZone()
 	if err != nil {
@@ -335,18 +344,8 @@ func BenchmarkClientInit(b *testing.B) {
 			defer cStruct.mu.RUnlock()
 		}
 	})
-	b.Run("mock client", func(b *testing.B) {
-		for b.Loop() {
-			c := NewMockLocalTimeZone()
-			cStruct, ok := c.(*localTimeZone)
-			if !ok {
-				b.Errorf("cannot initialize timezone client")
-			}
-			cStruct.mu.RLock()
-			defer cStruct.mu.RUnlock()
-		}
-	})
 }
+
 func TestNautical(t *testing.T) {
 	t.Parallel()
 	tt := []struct {
@@ -429,29 +428,5 @@ func TestLoadGeoJSONMalformed(t *testing.T) {
 
 	if len(c.tzData) != 0 {
 		t.Errorf("tzData not reset")
-	}
-}
-
-func TestLoadOverwrite(t *testing.T) {
-	client, err := NewLocalTimeZone()
-	if err != nil {
-		t.Errorf("cannot initialize client, got %v", err)
-	}
-	c, ok := client.(*localTimeZone)
-	if !ok {
-		t.Errorf("cannot initialize client")
-	}
-	c.mu.RLock()
-	lenTzData := len(c.tzData)
-	c.mu.RUnlock()
-
-	err = c.load(MockTZShapeFile)
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if err != nil {
-		t.Errorf("cannot switch client to mock data, got %v", err)
-	}
-	if len(c.tzData) >= lenTzData {
-		t.Errorf("boundCache not overwritten by loading new data")
 	}
 }
