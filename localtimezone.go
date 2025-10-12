@@ -115,6 +115,7 @@ func NewMockLocalTimeZone() LocalTimeZone {
 	z := localTimeZone{}
 	err := z.load(MockTZShapeFile)
 	if err != nil {
+		// The MockTZShapeFile is embedded and designed to never panic
 		panic(err)
 	}
 	return &z
