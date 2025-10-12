@@ -103,7 +103,7 @@ func TestTzidPresent(t *testing.T) {
 	}
 	z.mu.RLock()
 	defer z.mu.RUnlock()
-	_, ok = z.tzData["id"]
+	_, ok = z.data.Load().tzData["id"]
 	if ok {
 		t.Error("unexpected feature with empty tzid")
 	}
@@ -120,7 +120,7 @@ func TestPolygons(t *testing.T) {
 	}
 	z.mu.RLock()
 	defer z.mu.RUnlock()
-	for tzid, d := range z.tzData {
+	for tzid, d := range z.data.Load().tzData {
 		if d.polygon != nil {
 			for _, ring := range *d.polygon {
 				if len(ring) < 4 {

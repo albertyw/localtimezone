@@ -27,6 +27,7 @@ import (
 	"math"
 	"sort"
 	"sync"
+	"sync/atomic"
 
 	json "github.com/json-iterator/go"
 	"github.com/paulmach/orb"
@@ -92,10 +93,14 @@ type tzData struct {
 	centers      []orb.Point
 }
 
-type localTimeZone struct {
+type immutableCache struct {
 	tzids  []string
 	tzData map[string]tzData
-	mu     sync.RWMutex
+}
+
+type localTimeZone struct {
+	data atomic.Pointer[immutableCache]
+	mu   sync.RWMutex
 }
 
 var _ LocalTimeZone = &localTimeZone{}
@@ -159,8 +164,9 @@ func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err e
 	}
 	z.mu.RLock()
 	defer z.mu.RUnlock()
-	for _, id := range z.tzids {
-		d := z.tzData[id]
+	cache := z.data.Load()
+	for _, id := range cache.tzids {
+		d := cache.tzData[id]
 		if !d.bound.Contains(p) {
 			continue
 		}
@@ -185,13 +191,13 @@ func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err e
 	if len(tzids) > 0 {
 		return tzids, nil
 	}
-	return z.getClosestZone(p)
+	return z.getClosestZone(p, cache)
 }
 
-func (z *localTimeZone) getClosestZone(point orb.Point) (tzids []string, err error) {
+func (z *localTimeZone) getClosestZone(point orb.Point, cache *immutableCache) (tzids []string, err error) {
 	mindist := math.Inf(1)
 	var winner string
-	for id, d := range z.tzData {
+	for id, d := range cache.tzData {
 		for _, p := range d.centers {
 			tmp := planar.Distance(p, point)
 			if tmp < mindist {
@@ -224,6 +230,7 @@ func getNauticalZone(point orb.Point) (tzids []string, err error) {
 func (z *localTimeZone) buildCache(features []*geojson.Feature) {
 	var wg sync.WaitGroup
 	var m sync.Mutex
+	tzDatas := make(map[string]tzData, len(features))
 	for _, f := range features {
 		wg.Add(1)
 		go func(f *geojson.Feature) {
@@ -250,24 +257,30 @@ func (z *localTimeZone) buildCache(features []*geojson.Feature) {
 			d.bound = &bound
 			d.centers = tzCenters
 			m.Lock()
-			z.tzData[id] = d
+			tzDatas[id] = d
 			m.Unlock()
 		}(f)
 	}
 	wg.Wait()
 
-	z.tzids = make([]string, len(z.tzData))
+	tzids := make([]string, len(tzDatas))
 	i := 0
-	for tzid := range z.tzData {
-		z.tzids[i] = tzid
+	for tzid := range tzDatas {
+		tzids[i] = tzid
 		i++
 	}
-	sort.Strings(z.tzids)
+	sort.Strings(tzids)
+	cache := immutableCache{
+		tzData: tzDatas,
+		tzids:  tzids,
+	}
+	z.data.Store(&cache)
 }
 
 // LoadGeoJSON loads a custom GeoJSON shapefile from a Reader
 func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	z.mu.Lock()
+	defer z.mu.Unlock()
 
 	var buf bytes.Buffer
 	_, err := buf.ReadFrom(r)
@@ -276,16 +289,13 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	}
 	orbData, err := geojson.UnmarshalFeatureCollection(buf.Bytes())
 	if err != nil {
-		z.tzData = make(map[string]tzData)
-		z.tzids = []string{}
-		z.mu.Unlock()
+		cache := immutableCache{
+			tzData: make(map[string]tzData),
+			tzids:  []string{},
+		}
+		z.data.Store(&cache)
 		return err
 	}
-	z.tzData = make(map[string]tzData, TZCount) // Possibly the incorrect length in case of Mock or custom data
-	z.tzids = []string{}                        // Cannot set a length or else array will be full of empty strings
-	go func(features []*geojson.Feature) {
-		defer z.mu.Unlock()
-		z.buildCache(features)
-	}(orbData.Features)
+	z.buildCache(orbData.Features)
 	return nil
 }
