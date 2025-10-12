@@ -8,11 +8,54 @@ import (
 	"testing"
 
 	"github.com/paulmach/orb"
+	"github.com/paulmach/orb/encoding/mvt"
+	"github.com/paulmach/orb/geojson"
 	"go.uber.org/goleak"
 )
 
 func TestMain(m *testing.M) {
 	goleak.VerifyTestMain(m)
+}
+
+func TestMVT(t *testing.T) {
+	g, err := gzip.NewReader(bytes.NewBuffer(MockTZShapeFile))
+	if err != nil {
+		t.Errorf("cannot create gzip reader, got error %v", err)
+	}
+	defer g.Close()
+
+	var buf bytes.Buffer
+	_, err = buf.ReadFrom(g)
+	if err != nil {
+		t.Errorf("cannot read from gzip, got error %v", err)
+	}
+
+	geojsonFeatureCollection, err := geojson.UnmarshalFeatureCollection(buf.Bytes())
+	if err != nil {
+		t.Errorf("cannot unmarshal geojson, got error %v", err)
+	}
+
+	collections := map[string]*geojson.FeatureCollection{
+		"data": geojsonFeatureCollection,
+	}
+	layers := mvt.NewLayers(collections)
+	mvtMarshalled, err := mvt.Marshal(layers)
+	if err != nil {
+		t.Errorf("cannot marshal mvt, got error %v", err)
+	}
+
+	unmarshalledLayers, err := mvt.Unmarshal(mvtMarshalled)
+	if err != nil {
+		t.Errorf("cannot unmarshal mvt, got error %v", err)
+	}
+	unmarshalledCollections := unmarshalledLayers.ToFeatureCollections()
+	unmarshalledFeatureCollection, ok := unmarshalledCollections["data"]
+	if !ok {
+		t.Errorf("cannot find data layer")
+	}
+	if len(unmarshalledFeatureCollection.Features) != len(geojsonFeatureCollection.Features) {
+		t.Errorf("expected %d features; got %d", len(geojsonFeatureCollection.Features), len(unmarshalledFeatureCollection.Features))
+	}
 }
 
 func TestPointFromOrb(t *testing.T) {
