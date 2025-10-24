@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+v3.1.11 (2025-10-23)
+--------------------
+
+ - Increase simplification of geo polygons reducing client load times by 60% and timezone lookups by 50%
+ - Fix tzshapefilegen
+
+
 v3.1.10 (2025-10-12)
 --------------------
 
