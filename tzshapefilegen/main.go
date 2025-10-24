@@ -36,6 +36,16 @@ var TZNames = []string{
 `
 const defaultRelease = "default"
 
+type marshaler struct{}
+
+func (u marshaler) Marshal(v interface{}) ([]byte, error) {
+	return json.Marshal(v)
+}
+
+func (u marshaler) Unmarshal(data []byte, v interface{}) error {
+	return json.Unmarshal(data, v)
+}
+
 func getMostCurrentRelease() (version string, url string, err error) {
 	resp, err := http.Get("https://api.github.com/repos/evansiroky/timezone-boundary-builder/releases")
 	if err != nil {
