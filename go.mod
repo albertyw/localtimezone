@@ -8,4 +8,4 @@ require (
 	go.uber.org/goleak v1.3.0
 )
 
-require go.mongodb.org/mongo-driver v1.17.4 // indirect
+require go.mongodb.org/mongo-driver v1.17.6 // indirect
