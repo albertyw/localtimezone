@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+v3.1.13 (2026-03-07)
+--------------------
+
+ - Update to tzdata 2026a
+ - Optimizations
+ - Update dependencies
+
+
 v3.1.12 (2026-01-08)
 --------------------
 
