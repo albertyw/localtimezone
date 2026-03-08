@@ -86,6 +86,7 @@ type LocalTimeZone interface {
 }
 
 type tzData struct {
+	id           string
 	polygon      *orb.Polygon
 	multiPolygon *orb.MultiPolygon
 	bound        *orb.Bound
@@ -93,8 +94,7 @@ type tzData struct {
 }
 
 type immutableCache struct {
-	tzids  []string
-	tzData map[string]tzData
+	tzData []tzData
 }
 
 type localTimeZone struct {
@@ -161,14 +161,13 @@ func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err e
 		return nil, ErrOutOfRange
 	}
 	cache := z.data.Load()
-	for _, id := range cache.tzids {
-		d := cache.tzData[id]
+	for _, d := range cache.tzData {
 		if !d.bound.Contains(p) {
 			continue
 		}
 		if d.polygon != nil {
 			if planar.PolygonContains(*d.polygon, p) {
-				tzids = append(tzids, id)
+				tzids = append(tzids, d.id)
 				if single {
 					return
 				}
@@ -177,7 +176,7 @@ func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err e
 		}
 		if d.multiPolygon != nil {
 			if planar.MultiPolygonContains(*d.multiPolygon, p) {
-				tzids = append(tzids, id)
+				tzids = append(tzids, d.id)
 				if single {
 					return
 				}
@@ -193,12 +192,12 @@ func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err e
 func (z *localTimeZone) getClosestZone(point orb.Point, cache *immutableCache) (tzids []string, err error) {
 	mindist := math.Inf(1)
 	var winner string
-	for id, d := range cache.tzData {
+	for _, d := range cache.tzData {
 		for _, p := range d.centers {
 			tmp := planar.Distance(p, point)
 			if tmp < mindist {
 				mindist = tmp
-				winner = id
+				winner = d.id
 			}
 		}
 	}
@@ -226,14 +225,14 @@ func getNauticalZone(point orb.Point) (tzids []string, err error) {
 func (z *localTimeZone) buildCache(features []*geojson.Feature) {
 	var wg sync.WaitGroup
 	var m sync.Mutex
-	tzDatas := make(map[string]tzData, len(features))
+	tzDatas := make([]tzData, 0, len(features))
 	for _, f := range features {
 		wg.Add(1)
 		go func(f *geojson.Feature) {
 			defer wg.Done()
 			id := f.Properties.MustString("tzid")
 			var multiPolygon orb.MultiPolygon
-			d := tzData{}
+			d := tzData{id: id}
 			polygon, ok := f.Geometry.(orb.Polygon)
 			if ok {
 				d.polygon = &polygon
@@ -253,23 +252,16 @@ func (z *localTimeZone) buildCache(features []*geojson.Feature) {
 			d.bound = &bound
 			d.centers = tzCenters
 			m.Lock()
-			tzDatas[id] = d
+			tzDatas = append(tzDatas, d)
 			m.Unlock()
 		}(f)
 	}
 	wg.Wait()
 
-	tzids := make([]string, len(tzDatas))
-	i := 0
-	for tzid := range tzDatas {
-		tzids[i] = tzid
-		i++
-	}
-	sort.Strings(tzids)
-	cache := immutableCache{
-		tzData: tzDatas,
-		tzids:  tzids,
-	}
+	sort.Slice(tzDatas, func(i, j int) bool {
+		return tzDatas[i].id < tzDatas[j].id
+	})
+	cache := immutableCache{tzData: tzDatas}
 	z.data.Store(&cache)
 }
 
@@ -282,10 +274,7 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	}
 	orbData, err := geojson.UnmarshalFeatureCollection(buf.Bytes())
 	if err != nil {
-		cache := immutableCache{
-			tzData: make(map[string]tzData),
-			tzids:  []string{},
-		}
+		cache := immutableCache{tzData: []tzData{}}
 		z.data.Store(&cache)
 		return err
 	}

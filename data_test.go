@@ -101,9 +101,10 @@ func TestTzidPresent(t *testing.T) {
 	if !ok {
 		t.Error("error when initializing client")
 	}
-	_, ok = z.data.Load().tzData["id"]
-	if ok {
-		t.Error("unexpected feature with empty tzid")
+	for _, d := range z.data.Load().tzData {
+		if d.id == "id" {
+			t.Error("unexpected feature with empty tzid")
+		}
 	}
 }
 
@@ -116,11 +117,11 @@ func TestPolygons(t *testing.T) {
 	if !ok {
 		t.Error("error when initializing client")
 	}
-	for tzid, d := range z.data.Load().tzData {
+	for _, d := range z.data.Load().tzData {
 		if d.polygon != nil {
 			for _, ring := range *d.polygon {
 				if len(ring) < 4 {
-					t.Errorf("expected polygon %s ring to have >= 4 coordinates, instead has %d", tzid, len(ring))
+					t.Errorf("expected polygon %s ring to have >= 4 coordinates, instead has %d", d.id, len(ring))
 				}
 			}
 		}
