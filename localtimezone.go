@@ -19,7 +19,6 @@ package localtimezone
 
 import (
 	"bytes"
-	"compress/gzip"
 	_ "embed"
 	"errors"
 	"fmt"
@@ -29,6 +28,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/klauspost/compress/gzip"
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geojson"
 	"github.com/paulmach/orb/planar"

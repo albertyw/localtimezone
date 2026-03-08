@@ -4,6 +4,7 @@ go 1.24
 
 require (
 	github.com/goccy/go-json v0.10.5
+	github.com/klauspost/compress v1.18.4
 	github.com/paulmach/orb v0.12.0
 	go.uber.org/goleak v1.3.0
 )
