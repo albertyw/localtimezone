@@ -9,4 +9,7 @@ require (
 	go.uber.org/goleak v1.3.0
 )
 
-require go.mongodb.org/mongo-driver v1.17.9 // indirect
+require (
+	github.com/uber/h3-go/v4 v4.4.0 // indirect
+	go.mongodb.org/mongo-driver v1.17.9 // indirect
+)
