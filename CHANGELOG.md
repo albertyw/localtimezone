@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+v3.2.0 (2026-03-14)
+-------------------
+
+ - Convert underlying timezone data from GeoJSON to WKB, decreasing client initialization times by 75%
+ - Readme improvements
+ - Update dependencies
+
+
 v3.1.13 (2026-03-07)
 --------------------
 
