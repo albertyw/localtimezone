@@ -218,19 +218,37 @@ func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 		fmt.Printf("  Processed %s (%d cells so far)\n", tzid, len(tzCells[tzid]))
 	}
 
-	// Build cell entries, deduplicating per timezone
+	// Deduplicate and compact cells per timezone
 	var entries []cellEntry
+	totalBefore := 0
+	totalAfter := 0
 	for tzid, cells := range tzCells {
+		// Deduplicate
 		seen := make(map[h3.Cell]bool, len(cells))
-		idx := tzNameIndex[tzid]
+		unique := make([]h3.Cell, 0, len(cells))
 		for _, c := range cells {
 			if !seen[c] {
 				seen[c] = true
-				entries = append(entries, cellEntry{cell: c, tzIdx: idx})
+				unique = append(unique, c)
 			}
 		}
+		totalBefore += len(unique)
+
+		// Compact: merges groups of 7 sibling cells into their parent
+		compacted, err := h3.CompactCells(unique)
+		if err != nil {
+			log.Printf("Warning: CompactCells failed for %s, using uncompacted: %v\n", tzid, err)
+			compacted = unique
+		}
+		totalAfter += len(compacted)
+
+		idx := tzNameIndex[tzid]
+		for _, c := range compacted {
+			entries = append(entries, cellEntry{cell: c, tzIdx: idx})
+		}
 	}
-	fmt.Printf("Total cells: %d\n", len(entries))
+	fmt.Printf("Compaction: %d cells -> %d cells (%.1f%% reduction)\n",
+		totalBefore, totalAfter, 100.0*(1.0-float64(totalAfter)/float64(totalBefore)))
 
 	// Sort entries by cell value for binary search
 	sort.Slice(entries, func(i, j int) bool {
