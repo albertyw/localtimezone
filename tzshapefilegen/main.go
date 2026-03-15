@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"sync"
 
 	"github.com/goccy/go-json"
 	"github.com/paulmach/orb"
@@ -184,9 +185,14 @@ func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 		tzNameIndex[name] = uint16(i)
 	}
 
-	// Collect all cells per timezone
-	tzCells := make(map[string][]h3.Cell)
-	for _, feature := range fc.Features {
+	// Collect all cells per timezone (parallelized)
+	type featureResult struct {
+		tzid  string
+		cells []h3.Cell
+	}
+	results := make([]featureResult, len(fc.Features))
+	var wg sync.WaitGroup
+	for i, feature := range fc.Features {
 		tzid := feature.Properties.MustString("tzid")
 		if tzid == "" {
 			break
@@ -203,19 +209,34 @@ func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 			continue
 		}
 
-		for _, polygon := range polygons {
-			geoPolygon := orbPolygonToH3(polygon)
-			if len(geoPolygon.GeoLoop) == 0 {
-				continue
+		wg.Add(1)
+		go func(idx int, tzid string, polygons []orb.Polygon) {
+			defer wg.Done()
+			var cells []h3.Cell
+			for _, polygon := range polygons {
+				geoPolygon := orbPolygonToH3(polygon)
+				if len(geoPolygon.GeoLoop) == 0 {
+					continue
+				}
+				c, err := h3.PolygonToCells(geoPolygon, h3Resolution)
+				if err != nil {
+					log.Printf("Warning: PolygonToCells failed for %s: %v\n", tzid, err)
+					continue
+				}
+				cells = append(cells, c...)
 			}
-			cells, err := h3.PolygonToCells(geoPolygon, h3Resolution)
-			if err != nil {
-				log.Printf("Warning: PolygonToCells failed for %s: %v\n", tzid, err)
-				continue
-			}
-			tzCells[tzid] = append(tzCells[tzid], cells...)
+			results[idx] = featureResult{tzid: tzid, cells: cells}
+			fmt.Printf("  Processed %s (%d cells)\n", tzid, len(cells))
+		}(i, tzid, polygons)
+	}
+	wg.Wait()
+
+	// Merge results into per-timezone map
+	tzCells := make(map[string][]h3.Cell)
+	for _, r := range results {
+		if r.tzid != "" {
+			tzCells[r.tzid] = append(tzCells[r.tzid], r.cells...)
 		}
-		fmt.Printf("  Processed %s (%d cells so far)\n", tzid, len(tzCells[tzid]))
 	}
 
 	// Deduplicate and compact cells per timezone
@@ -233,6 +254,10 @@ func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 			}
 		}
 		totalBefore += len(unique)
+		if len(unique) == 0 {
+			log.Printf("Warning: no cells generated for %s\n", tzid)
+			continue
+		}
 
 		// Compact: merges groups of 7 sibling cells into their parent
 		compacted, err := h3.CompactCells(unique)
