@@ -7,8 +7,14 @@
 [![Code Coverage](https://qlty.sh/gh/albertyw/projects/localtimezone/coverage.svg)](https://qlty.sh/gh/albertyw/projects/localtimezone)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-LatLong conversion to time zone.
-This is a fork of [github.com/ugjka/go-tz](https://github.com/ugjka/go-tz).
+Provides timezone lookup for geographic coordinates.
+Based on [github.com/ugjka/go-tz](https://github.com/ugjka/go-tz).
+
+## Installation
+
+```bash
+go get github.com/albertyw/localtimezone/v3
+```
 
 ## Usage / Example
 
@@ -29,16 +35,18 @@ if err != nil {
 fmt.Println(zone[0])
 ```
 
+Note: `GetZone()` may return an error only for out-of-range coordinates; it returns the nearest timezone for all valid locations.
+
 Uses simplified shapefile from [timezone-boundary-builder](https://github.com/evansiroky/timezone-boundary-builder/)
 
-GeoJson Simplification done with [orb](https://github.com/paulmach/orb).
+Built with [orb](https://github.com/paulmach/orb) for high-performance geometry handling and WKB serialization.
 
 ## Features
 
 - The timezone shapefile is embedded in the build binary
-- Supports overlapping zones
-- You can load your own geojson shapefile if you want
-- Sub millisecond lookup even on old hardware
+- `GetZone()` returns all timezones at a location; `GetOneZone()` returns a single result
+- You can load a custom GeoJSON shapefile for alternative data sources
+- Thread-safe for concurrent lookups
 - Lookups are purely in-memory. Uses ~8MB of RAM.
 
 ### Benchmarks
@@ -59,16 +67,22 @@ PASS
 ok      github.com/albertyw/localtimezone/v3    7.312s
 ```
 
-## Problems
+Lookups take ~6-30 microseconds depending on location complexity; client initialization takes ~14ms.
 
-- Shapefile is simplified using a lossy method so it may be innacurate along the borders
+## Limitations
+
+- Shapefile uses simplified geometries (Visvalingam simplification with ~89m threshold) that may have reduced accuracy near borders
+- Points in international waters or disputed territories return the nearest timezone
 
 ## Updating data
-Get the most current timezone release version at https://github.com/evansiroky/timezone-boundary-builder/tags
+
+To update to the latest timezone data:
 
 ```bash
 make generate
 ```
+
+The data comes from [timezone-boundary-builder](https://github.com/evansiroky/timezone-boundary-builder). Check the releases page for the latest version.
 
 ## Licenses
 
