@@ -2,7 +2,7 @@
 //
 // # Features
 //
-// * The timezone shapefile is embedded in the build binary using go-bindata
+// * The timezone shapefile is embedded in the build binary using //go:embed
 //
 // * Supports overlapping zones
 //
@@ -20,6 +20,7 @@ package localtimezone
 import (
 	"bytes"
 	_ "embed"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -30,21 +31,22 @@ import (
 
 	"github.com/klauspost/compress/gzip"
 	"github.com/paulmach/orb"
+	"github.com/paulmach/orb/encoding/wkb"
 	"github.com/paulmach/orb/geojson"
 	"github.com/paulmach/orb/planar"
 )
 
 // TZShapeFile is the data containing geographic shapes for timezone borders.
-// This data is a large json blob compressed with gzip.
+// This data is WKB binary format compressed with gzip.
 //
-//go:embed data.json.gz
+//go:embed data.wkb.gz
 var TZShapeFile []byte
 
 // MockTZShapeFile is similar to TZShapeFile but maps the entire world to the timezone America/Los_Angeles.
-// This data is a small json blob compressed with gzip.
+// This data is WKB binary format compressed with gzip.
 // It is meant for testing.
 //
-//go:embed data_mock.json.gz
+//go:embed data_mock.wkb.gz
 var MockTZShapeFile []byte
 
 // MockTimeZone is the timezone that is always returned from the NewMockLocalTimeZone client
@@ -131,10 +133,86 @@ func (z *localTimeZone) load(shapeFile []byte) error {
 	}
 	defer g.Close()
 
-	err = z.LoadGeoJSON(g)
+	return z.loadWKB(g)
+}
+
+func (z *localTimeZone) loadWKB(r io.Reader) error {
+	data, err := io.ReadAll(r)
 	if err != nil {
 		return err
 	}
+	buf := bytes.NewReader(data)
+
+	var featureCount uint32
+	if err := binary.Read(buf, binary.LittleEndian, &featureCount); err != nil {
+		return err
+	}
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	tzDatas := make([]tzData, 0, featureCount)
+
+	for i := uint32(0); i < featureCount; i++ {
+		var tzidLen uint16
+		if err := binary.Read(buf, binary.LittleEndian, &tzidLen); err != nil {
+			return err
+		}
+		tzidBytes := make([]byte, tzidLen)
+		if _, err := io.ReadFull(buf, tzidBytes); err != nil {
+			return err
+		}
+		tzid := string(tzidBytes)
+
+		var wkbLen uint32
+		if err := binary.Read(buf, binary.LittleEndian, &wkbLen); err != nil {
+			return err
+		}
+		wkbBytes := make([]byte, wkbLen)
+		if _, err := io.ReadFull(buf, wkbBytes); err != nil {
+			return err
+		}
+
+		geometry, err := wkb.Unmarshal(wkbBytes)
+		if err != nil {
+			return err
+		}
+
+		wg.Add(1)
+		go func(tzid string, geometry orb.Geometry) {
+			defer wg.Done()
+			d := tzData{id: tzid}
+			var multiPolygon orb.MultiPolygon
+			polygon, ok := geometry.(orb.Polygon)
+			if ok {
+				d.polygon = &polygon
+				multiPolygon = []orb.Polygon{polygon}
+			} else {
+				mp, _ := geometry.(orb.MultiPolygon)
+				d.multiPolygon = &mp
+				multiPolygon = mp
+			}
+			var tzCenters []orb.Point
+			for _, polygon := range multiPolygon {
+				for _, ring := range polygon {
+					point, _ := planar.CentroidArea(ring)
+					tzCenters = append(tzCenters, point)
+				}
+			}
+			bound := geometry.Bound()
+			d.bound = &bound
+			d.centers = tzCenters
+			mu.Lock()
+			tzDatas = append(tzDatas, d)
+			mu.Unlock()
+		}(tzid, geometry)
+	}
+	wg.Wait()
+
+	sort.Slice(tzDatas, func(i, j int) bool {
+		return tzDatas[i].id < tzDatas[j].id
+	})
+	cache := immutableCache{tzData: tzDatas}
+	z.data.Store(&cache)
 	return nil
 }
 
