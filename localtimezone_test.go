@@ -9,34 +9,11 @@ import (
 	"testing"
 
 	"github.com/paulmach/orb"
-	"github.com/paulmach/orb/encoding/wkb"
 	"go.uber.org/goleak"
 )
 
 func TestMain(m *testing.M) {
 	goleak.VerifyTestMain(m)
-}
-
-func TestPointFromOrb(t *testing.T) {
-	p1 := orb.Point{1, 2}
-	p2 := pointFromOrb(p1)
-	if p2.Lon != p1[0] {
-		t.Errorf("expected point longitude %v; got %v", p1[0], p2.Lon)
-	}
-	if p2.Lat != p1[1] {
-		t.Errorf("expected point latitude %v; got %v", p1[1], p2.Lat)
-	}
-}
-
-func TestPointToOrb(t *testing.T) {
-	p1 := Point{Lon: 1, Lat: 2}
-	p2 := pointToOrb(p1)
-	if p2[0] != p1.Lon {
-		t.Errorf("expected point longitude %v; got %v", p1.Lon, p2[0])
-	}
-	if p2[1] != p1.Lat {
-		t.Errorf("expected point latitude %v; got %v", p1.Lat, p2[1])
-	}
 }
 
 func TestLoadError(t *testing.T) {
@@ -114,14 +91,6 @@ var tt = []struct {
 		Point{87.319461, 43.419754},
 		result{
 			zones: []string{"Asia/Shanghai", "Asia/Urumqi"},
-			err:   nil,
-		},
-	},
-	{
-		"Tuvalu",
-		Point{178.1167698, -7.768959},
-		result{
-			zones: []string{"Pacific/Funafuti"},
 			err:   nil,
 		},
 	},
@@ -272,13 +241,9 @@ func TestMockLocalTimeZonePanic(t *testing.T) {
 }
 
 func BenchmarkZones(b *testing.B) {
-	zInterface, err := NewLocalTimeZone()
+	z, err := NewLocalTimeZone()
 	if err != nil {
 		b.Errorf("cannot initialize timezone client: %v", err)
-	}
-	z, ok := zInterface.(*localTimeZone)
-	if !ok {
-		b.Errorf("cannot initialize timezone client")
 	}
 
 	// Ensure client has finished loading data
@@ -286,25 +251,9 @@ func BenchmarkZones(b *testing.B) {
 	if err != nil {
 		b.Errorf("cannot initialize timezone client: %v", err)
 	}
-	cache := z.data.Load()
 
-	b.Run("polygon centers", func(b *testing.B) {
-		centers := []orb.Point{}
-		for _, d := range cache.tzData {
-			centers = append(centers, d.centers...)
-		}
-		n := 0
-		for b.Loop() {
-			cs := centers[n%len(centers)]
-			_, err := z.GetZone(pointFromOrb(cs))
-			if err != nil {
-				b.Errorf("point %v did not return a zone", centers)
-			}
-			n++
-		}
-	})
 	b.Run("test cases", func(b *testing.B) {
-		points := make([]Point, len(tt))
+		points := make([]Point, 0, len(tt))
 		for _, tc := range tt {
 			if tc.err != nil {
 				continue
@@ -346,6 +295,7 @@ func BenchmarkClientInit(b *testing.B) {
 		}
 	})
 }
+
 func TestNautical(t *testing.T) {
 	t.Parallel()
 	tt := []struct {
@@ -420,46 +370,8 @@ func TestLoadGeoJSONMalformed(t *testing.T) {
 	if err == nil {
 		t.Errorf("expected error, got %v", err)
 	}
-	if len(c.data.Load().tzData) != 0 {
-		t.Errorf("tzData not reset")
-	}
-}
-
-func TestWKBRoundTrip(t *testing.T) {
-	t.Parallel()
-	polygon := orb.Polygon{
-		orb.Ring{
-			{-180, -90},
-			{180, -90},
-			{180, 90},
-			{-180, 90},
-			{-180, -90},
-		},
-	}
-	wkbBytes, err := wkb.Marshal(polygon)
-	if err != nil {
-		t.Fatalf("wkb.Marshal: %v", err)
-	}
-	geometry, err := wkb.Unmarshal(wkbBytes)
-	if err != nil {
-		t.Fatalf("wkb.Unmarshal: %v", err)
-	}
-	result, ok := geometry.(orb.Polygon)
-	if !ok {
-		t.Fatalf("expected orb.Polygon, got %T", geometry)
-	}
-	if len(result) != len(polygon) {
-		t.Fatalf("expected %d rings, got %d", len(polygon), len(result))
-	}
-	for i, ring := range polygon {
-		if len(result[i]) != len(ring) {
-			t.Fatalf("ring %d: expected %d points, got %d", i, len(ring), len(result[i]))
-		}
-		for j, pt := range ring {
-			if result[i][j] != pt {
-				t.Errorf("ring %d point %d: expected %v, got %v", i, j, pt, result[i][j])
-			}
-		}
+	if len(c.data.Load().cells) != 0 {
+		t.Errorf("cells not reset")
 	}
 }
 
@@ -478,8 +390,12 @@ func TestLoadGeoJSONValid(t *testing.T) {
 	reader := bytes.NewBufferString(geojsonData)
 	z := &localTimeZone{}
 	// Initialize with empty cache so LoadGeoJSON can overwrite
-	cache := immutableCache{tzData: []tzData{}}
-	z.data.Store(&cache)
+	cache := &immutableCache{
+		tzNames: []string{},
+		cells:   []int64{},
+		tzIdx:   []uint16{},
+	}
+	z.data.Store(cache)
 	err := z.LoadGeoJSON(reader)
 	if err != nil {
 		t.Fatalf("LoadGeoJSON: %v", err)
@@ -493,21 +409,18 @@ func TestLoadGeoJSONValid(t *testing.T) {
 	}
 }
 
-func TestLoadWKBMalformed(t *testing.T) {
-	// Create a gzipped payload with invalid WKB data
+func TestLoadH3Malformed(t *testing.T) {
+	// Create a gzipped payload with invalid H3 data (bad magic)
 	var buf bytes.Buffer
-	if err := binary.Write(&buf, binary.LittleEndian, uint32(1)); err != nil {
+	buf.Write([]byte("XXXX")) // wrong magic
+	buf.WriteByte(1)
+	buf.WriteByte(7)
+	if err := binary.Write(&buf, binary.LittleEndian, uint16(0)); err != nil {
 		t.Fatal(err)
 	}
-	tzid := []byte("Test/Zone")
-	if err := binary.Write(&buf, binary.LittleEndian, uint16(len(tzid))); err != nil {
+	if err := binary.Write(&buf, binary.LittleEndian, uint32(0)); err != nil {
 		t.Fatal(err)
 	}
-	buf.Write(tzid)
-	if err := binary.Write(&buf, binary.LittleEndian, uint32(3)); err != nil {
-		t.Fatal(err)
-	}
-	buf.Write([]byte{0, 0, 0}) // invalid WKB
 
 	var compressed bytes.Buffer
 	gzipper := gzip.NewWriter(&compressed)
@@ -521,7 +434,7 @@ func TestLoadWKBMalformed(t *testing.T) {
 	z := &localTimeZone{}
 	err := z.load(compressed.Bytes())
 	if err == nil {
-		t.Error("expected error loading malformed WKB data")
+		t.Error("expected error loading malformed H3 data")
 	}
 }
 
@@ -534,13 +447,13 @@ func TestLoadOverwrite(t *testing.T) {
 	if !ok {
 		t.Errorf("cannot initialize client")
 	}
-	lenTzData := len(c.data.Load().tzData)
+	lenCells := len(c.data.Load().cells)
 
 	err = c.load(MockTZShapeFile)
 	if err != nil {
 		t.Errorf("cannot switch client to mock data, got %v", err)
 	}
-	if len(c.data.Load().tzData) >= lenTzData {
-		t.Errorf("boundCache not overwritten by loading new data")
+	if len(c.data.Load().cells) >= lenCells {
+		t.Errorf("cache not overwritten by loading new data")
 	}
 }

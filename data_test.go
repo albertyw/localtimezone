@@ -92,7 +92,7 @@ func TestData(t *testing.T) {
 	}
 }
 
-func TestTzidPresent(t *testing.T) {
+func TestTzNamesPresent(t *testing.T) {
 	client, err := NewLocalTimeZone()
 	if err != nil {
 		t.Errorf("cannot initialize timezone client: %v", err)
@@ -101,14 +101,18 @@ func TestTzidPresent(t *testing.T) {
 	if !ok {
 		t.Error("error when initializing client")
 	}
-	for _, d := range z.data.Load().tzData {
-		if d.id == "id" {
-			t.Error("unexpected feature with empty tzid")
+	cache := z.data.Load()
+	if len(cache.tzNames) == 0 {
+		t.Error("expected timezone names in cache")
+	}
+	for _, name := range cache.tzNames {
+		if name == "" {
+			t.Error("unexpected empty timezone name")
 		}
 	}
 }
 
-func TestPolygons(t *testing.T) {
+func TestCellsPresent(t *testing.T) {
 	client, err := NewLocalTimeZone()
 	if err != nil {
 		t.Errorf("cannot initialize timezone client: %v", err)
@@ -117,13 +121,18 @@ func TestPolygons(t *testing.T) {
 	if !ok {
 		t.Error("error when initializing client")
 	}
-	for _, d := range z.data.Load().tzData {
-		if d.polygon != nil {
-			for _, ring := range *d.polygon {
-				if len(ring) < 4 {
-					t.Errorf("expected polygon %s ring to have >= 4 coordinates, instead has %d", d.id, len(ring))
-				}
-			}
+	cache := z.data.Load()
+	if len(cache.cells) == 0 {
+		t.Error("expected cells in cache")
+	}
+	if len(cache.cells) != len(cache.tzIdx) {
+		t.Errorf("cells and tzIdx length mismatch: %d vs %d", len(cache.cells), len(cache.tzIdx))
+	}
+	// Verify cells are sorted
+	for i := 1; i < len(cache.cells); i++ {
+		if cache.cells[i] < cache.cells[i-1] {
+			t.Errorf("cells not sorted at index %d", i)
+			break
 		}
 	}
 }

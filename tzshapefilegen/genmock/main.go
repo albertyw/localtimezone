@@ -1,5 +1,5 @@
-// Generates data_mock.h3.gz — a small H3 dataset mapping cells around
-// Los Angeles to "America/Los_Angeles" for testing purposes.
+// Generates data_mock.h3.gz — a small H3 dataset mapping all base cells
+// to "America/Los_Angeles" for testing purposes.
 package main
 
 import (
@@ -17,31 +17,22 @@ import (
 const h3Resolution = 7
 
 func main() {
-	// Generate cells for a small polygon around Los Angeles
-	geoPolygon := h3.GeoPolygon{
-		GeoLoop: h3.GeoLoop{
-			h3.NewLatLng(33.5, -118.8),
-			h3.NewLatLng(33.5, -117.5),
-			h3.NewLatLng(34.5, -117.5),
-			h3.NewLatLng(34.5, -118.8),
-			h3.NewLatLng(33.5, -118.8),
-		},
-	}
-
-	cells, err := h3.PolygonToCells(geoPolygon, h3Resolution)
+	// Use all 122 resolution-0 base cells so every point on Earth
+	// resolves to "America/Los_Angeles" via parent hierarchy lookup.
+	cells, err := h3.Res0Cells()
 	if err != nil {
-		log.Fatalf("PolygonToCells: %v", err)
+		log.Fatalf("Res0Cells: %v", err)
 	}
-	fmt.Printf("Generated %d cells for mock LA area\n", len(cells))
-
-	// Build binary format
-	tzName := "America/Los_Angeles"
-	tzNameBytes := []byte(tzName)
+	fmt.Printf("Using %d resolution-0 base cells for mock data\n", len(cells))
 
 	// Sort cells
 	sort.Slice(cells, func(i, j int) bool {
 		return cells[i] < cells[j]
 	})
+
+	// Build binary format
+	tzName := "America/Los_Angeles"
+	tzNameBytes := []byte(tzName)
 
 	var buf bytes.Buffer
 
@@ -49,17 +40,27 @@ func main() {
 	buf.Write([]byte("H3TZ"))
 	buf.WriteByte(1) // Version
 	buf.WriteByte(byte(h3Resolution))
-	binary.Write(&buf, binary.LittleEndian, uint16(1)) // 1 timezone string
+	if err := binary.Write(&buf, binary.LittleEndian, uint16(1)); err != nil {
+		log.Fatalf("write string count: %v", err)
+	}
 
 	// String table
-	binary.Write(&buf, binary.LittleEndian, uint16(len(tzNameBytes)))
+	if err := binary.Write(&buf, binary.LittleEndian, uint16(len(tzNameBytes))); err != nil {
+		log.Fatalf("write string length: %v", err)
+	}
 	buf.Write(tzNameBytes)
 
 	// Cell data
-	binary.Write(&buf, binary.LittleEndian, uint32(len(cells)))
+	if err := binary.Write(&buf, binary.LittleEndian, uint32(len(cells))); err != nil {
+		log.Fatalf("write cell count: %v", err)
+	}
 	for _, c := range cells {
-		binary.Write(&buf, binary.LittleEndian, int64(c))
-		binary.Write(&buf, binary.LittleEndian, uint16(0)) // index 0 = "America/Los_Angeles"
+		if err := binary.Write(&buf, binary.LittleEndian, int64(c)); err != nil {
+			log.Fatalf("write cell: %v", err)
+		}
+		if err := binary.Write(&buf, binary.LittleEndian, uint16(0)); err != nil {
+			log.Fatalf("write tz index: %v", err)
+		}
 	}
 
 	// Gzip compress
