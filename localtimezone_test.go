@@ -3,11 +3,13 @@ package localtimezone
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/binary"
 	"fmt"
 	"sync"
 	"testing"
 
 	"github.com/paulmach/orb"
+	"github.com/paulmach/orb/encoding/wkb"
 	"go.uber.org/goleak"
 )
 
@@ -420,6 +422,106 @@ func TestLoadGeoJSONMalformed(t *testing.T) {
 	}
 	if len(c.data.Load().tzData) != 0 {
 		t.Errorf("tzData not reset")
+	}
+}
+
+func TestWKBRoundTrip(t *testing.T) {
+	t.Parallel()
+	polygon := orb.Polygon{
+		orb.Ring{
+			{-180, -90},
+			{180, -90},
+			{180, 90},
+			{-180, 90},
+			{-180, -90},
+		},
+	}
+	wkbBytes, err := wkb.Marshal(polygon)
+	if err != nil {
+		t.Fatalf("wkb.Marshal: %v", err)
+	}
+	geometry, err := wkb.Unmarshal(wkbBytes)
+	if err != nil {
+		t.Fatalf("wkb.Unmarshal: %v", err)
+	}
+	result, ok := geometry.(orb.Polygon)
+	if !ok {
+		t.Fatalf("expected orb.Polygon, got %T", geometry)
+	}
+	if len(result) != len(polygon) {
+		t.Fatalf("expected %d rings, got %d", len(polygon), len(result))
+	}
+	for i, ring := range polygon {
+		if len(result[i]) != len(ring) {
+			t.Fatalf("ring %d: expected %d points, got %d", i, len(ring), len(result[i]))
+		}
+		for j, pt := range ring {
+			if result[i][j] != pt {
+				t.Errorf("ring %d point %d: expected %v, got %v", i, j, pt, result[i][j])
+			}
+		}
+	}
+}
+
+func TestLoadGeoJSONValid(t *testing.T) {
+	geojsonData := `{
+		"type": "FeatureCollection",
+		"features": [{
+			"type": "Feature",
+			"properties": {"tzid": "America/New_York"},
+			"geometry": {
+				"type": "Polygon",
+				"coordinates": [[[-80,35],[-75,35],[-75,40],[-80,40],[-80,35]]]
+			}
+		}]
+	}`
+	reader := bytes.NewBufferString(geojsonData)
+	z := &localTimeZone{}
+	// Initialize with empty cache so LoadGeoJSON can overwrite
+	cache := immutableCache{tzData: []tzData{}}
+	z.data.Store(&cache)
+	err := z.LoadGeoJSON(reader)
+	if err != nil {
+		t.Fatalf("LoadGeoJSON: %v", err)
+	}
+	tzids, err := z.GetZone(Point{Lon: -77.5, Lat: 37.5})
+	if err != nil {
+		t.Fatalf("GetZone: %v", err)
+	}
+	if len(tzids) != 1 || tzids[0] != "America/New_York" {
+		t.Errorf("expected [America/New_York], got %v", tzids)
+	}
+}
+
+func TestLoadWKBMalformed(t *testing.T) {
+	// Create a gzipped payload with invalid WKB data
+	var buf bytes.Buffer
+	if err := binary.Write(&buf, binary.LittleEndian, uint32(1)); err != nil {
+		t.Fatal(err)
+	}
+	tzid := []byte("Test/Zone")
+	if err := binary.Write(&buf, binary.LittleEndian, uint16(len(tzid))); err != nil {
+		t.Fatal(err)
+	}
+	buf.Write(tzid)
+	if err := binary.Write(&buf, binary.LittleEndian, uint32(3)); err != nil {
+		t.Fatal(err)
+	}
+	buf.Write([]byte{0, 0, 0}) // invalid WKB
+
+	var compressed bytes.Buffer
+	gzipper := gzip.NewWriter(&compressed)
+	if _, err := gzipper.Write(buf.Bytes()); err != nil {
+		t.Fatal(err)
+	}
+	if err := gzipper.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	z := &localTimeZone{}
+	err := z.load(compressed.Bytes())
+	if err == nil {
+		t.Error("expected error loading malformed WKB data")
 	}
 }
 
