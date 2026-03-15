@@ -2,7 +2,7 @@
 //
 // # Features
 //
-// * The timezone shapefile is embedded in the build binary using go-bindata
+// * The timezone shapefile is embedded in the build binary using //go:embed
 //
 // * Supports overlapping zones
 //
