@@ -6,6 +6,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"encoding/binary"
 	"flag"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"sort"
 
 	"github.com/goccy/go-json"
+	"github.com/paulmach/orb/encoding/wkb"
 	"github.com/paulmach/orb/geojson"
 	"github.com/paulmach/orb/simplify"
 )
@@ -36,13 +38,9 @@ var TZNames = []string{
 `
 const defaultRelease = "default"
 
-type marshaler struct{}
+type unmarshaler struct{}
 
-func (u marshaler) Marshal(v interface{}) ([]byte, error) {
-	return json.Marshal(v)
-}
-
-func (u marshaler) Unmarshal(data []byte, v interface{}) error {
+func (u unmarshaler) Unmarshal(data []byte, v interface{}) error {
 	return json.Unmarshal(data, v)
 }
 
@@ -133,40 +131,60 @@ func getGeoJSON(releaseURL string) ([]byte, error) {
 }
 
 func orbExec(combinedJSON []byte) ([]byte, []string, error) {
-	geojson.CustomJSONMarshaler = marshaler{}
-	geojson.CustomJSONUnmarshaler = marshaler{}
+	geojson.CustomJSONUnmarshaler = unmarshaler{}
 
 	fc, err := geojson.UnmarshalFeatureCollection(combinedJSON)
 	if err != nil {
 		log.Printf("Error: could not parse combined.json: %v\n", err)
 		return nil, nil, err
 	}
-	features := []*geojson.Feature{}
+	type simplifiedFeature struct {
+		tzid string
+		wkb  []byte
+	}
+	var features []simplifiedFeature
 	tzNames := []string{}
 	for _, feature := range fc.Features {
 		tzid := feature.Properties.MustString("tzid")
 		if tzid == "" {
 			break
 		}
-		feature.Geometry = simplify.Visvalingam(0.0008, 4).Simplify(feature.Geometry)
-		features = append(features, feature)
+		geometry := simplify.Visvalingam(0.0008, 4).Simplify(feature.Geometry)
+		wkbBytes, err := wkb.Marshal(geometry)
+		if err != nil {
+			log.Printf("Error: could not marshal WKB for %s: %v\n", tzid, err)
+			return nil, nil, err
+		}
+		features = append(features, simplifiedFeature{tzid: tzid, wkb: wkbBytes})
 		tzNames = append(tzNames, tzid)
 	}
 	sort.Slice(features, func(i, j int) bool {
-		return features[i].Properties.MustString("tzid") < features[j].Properties.MustString("tzid")
+		return features[i].tzid < features[j].tzid
 	})
-	fc.Features = features
-	reducedJSON, err := fc.MarshalJSON()
-	if err != nil {
-		log.Printf("Error: could not marshal reduced.json: %v\n", err)
+
+	// Build binary format
+	var buf bytes.Buffer
+	if err := binary.Write(&buf, binary.LittleEndian, uint32(len(features))); err != nil {
 		return nil, nil, err
 	}
+	for _, f := range features {
+		tzidBytes := []byte(f.tzid)
+		if err := binary.Write(&buf, binary.LittleEndian, uint16(len(tzidBytes))); err != nil {
+			return nil, nil, err
+		}
+		buf.Write(tzidBytes)
+		if err := binary.Write(&buf, binary.LittleEndian, uint32(len(f.wkb))); err != nil {
+			return nil, nil, err
+		}
+		buf.Write(f.wkb)
+	}
+
 	tzNames = append(tzNames, "Etc/GMT")
 	for offset := 1; offset <= 12; offset += 1 {
 		tzNames = append(tzNames, fmt.Sprintf("Etc/GMT+%d", offset), fmt.Sprintf("Etc/GMT-%d", offset))
 	}
 	sort.Strings(tzNames)
-	return reducedJSON, tzNames, nil
+	return buf.Bytes(), tzNames, nil
 }
 
 func generateData(geoJSON []byte) ([]byte, error) {
@@ -191,9 +209,9 @@ func generateData(geoJSON []byte) ([]byte, error) {
 }
 
 func writeData(content []byte) error {
-	err := os.WriteFile("data.json.gz", content, 0644)
+	err := os.WriteFile("data.wkb.gz", content, 0644)
 	if err != nil {
-		log.Printf("Error: could not write data.json.gz: %v\n", err)
+		log.Printf("Error: could not write data.wkb.gz: %v\n", err)
 		return err
 	}
 	return nil
