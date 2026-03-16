@@ -303,18 +303,18 @@ func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 		buf.Write(nameBytes)
 	}
 
-	// Cell data
-	if err := binary.Write(&buf, binary.LittleEndian, uint32(len(entries))); err != nil {
-		return nil, nil, err
+	// Cell data: bulk write using direct byte encoding
+	var countBuf [4]byte
+	binary.LittleEndian.PutUint32(countBuf[:], uint32(len(entries)))
+	buf.Write(countBuf[:])
+
+	entryBuf := make([]byte, len(entries)*10)
+	for i, e := range entries {
+		base := i * 10
+		binary.LittleEndian.PutUint64(entryBuf[base:base+8], uint64(e.cell))
+		binary.LittleEndian.PutUint16(entryBuf[base+8:base+10], e.tzIdx)
 	}
-	for _, e := range entries {
-		if err := binary.Write(&buf, binary.LittleEndian, int64(e.cell)); err != nil {
-			return nil, nil, err
-		}
-		if err := binary.Write(&buf, binary.LittleEndian, e.tzIdx); err != nil {
-			return nil, nil, err
-		}
-	}
+	buf.Write(entryBuf)
 
 	// Build full tzNames list including nautical zones
 	allTzNames := make([]string, len(tzidList))
