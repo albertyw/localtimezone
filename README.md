@@ -37,15 +37,13 @@ fmt.Println(zone[0])
 
 Note: `GetZone()` may return an error only for out-of-range coordinates; it returns the nearest timezone for all valid locations.
 
-Uses simplified shapefile from [timezone-boundary-builder](https://github.com/evansiroky/timezone-boundary-builder/)
-
-Built with [orb](https://github.com/paulmach/orb) for high-performance geometry handling and WKB serialization.
+Uses timezone boundary data from [timezone-boundary-builder](https://github.com/evansiroky/timezone-boundary-builder/), indexed with [H3](https://h3geo.org/) hexagonal cells for fast lookups.
 
 ## Features
 
-- The timezone shapefile is embedded in the build binary
+- The timezone data is embedded in the build binary
 - `GetZone()` returns all timezones at a location; `GetOneZone()` returns a single result
-- You can load a custom GeoJSON shapefile for alternative data sources
+- You can load custom GeoJSON data for alternative data sources
 - Thread-safe for concurrent lookups
 - Lookups are purely in-memory. Uses ~8MB of RAM.
 
@@ -67,11 +65,11 @@ PASS
 ok      github.com/albertyw/localtimezone/v3    7.312s
 ```
 
-Lookups take ~6-30 microseconds depending on location complexity; client initialization takes ~14ms.
+Lookups take ~1 microsecond; client initialization takes ~18ms.
 
 ## Limitations
 
-- Shapefile uses simplified geometries (Visvalingam simplification with ~89m threshold) that may have reduced accuracy near borders
+- H3 hexagonal discretization (resolution 7, ~5.16 km² per cell) may have reduced accuracy near timezone borders
 - Points in international waters or disputed territories return the nearest timezone
 
 ## Updating data
@@ -88,4 +86,4 @@ The data comes from [timezone-boundary-builder](https://github.com/evansiroky/ti
 
 The code used to lookup the timezone for a location is licensed under the [MIT License](https://opensource.org/licenses/MIT).
 
-The data in timezone shapefile is licensed under the [Open Data Commons Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/).
+The timezone boundary data is licensed under the [Open Data Commons Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/).

@@ -1,4 +1,4 @@
-// Code generation tool for embedding the timezone shapefile in the gotz package
+// Code generation tool for embedding the timezone H3 data in the localtimezone package
 // run "go generate" in the parent directory after changing the -release flag in gen.go
 package main
 
@@ -90,7 +90,7 @@ func getMostCurrentRelease() (version string, url string, err error) {
 func getGeoJSON(releaseURL string) ([]byte, error) {
 	resp, err := http.Get(releaseURL)
 	if err != nil {
-		log.Fatalf("Error: could not download tz shapefile: %v\n", err)
+		log.Fatalf("Error: could not download tz data: %v\n", err)
 	}
 
 	buffer := bytes.NewBuffer([]byte{})
