@@ -2,19 +2,19 @@
 //
 // # Features
 //
-// * The timezone shapefile is embedded in the build binary using //go:embed
+// * The timezone data is embedded in the build binary using //go:embed
 //
 // * Supports overlapping zones
 //
-// * You can load your own geojson shapefile if you want
+// * You can load your own geojson data if you want
 //
 // * Sub millisecond lookup even on old hardware
 //
 // # Problems
 //
-// * The shapefile is simplified using a lossy method so it may be innacurate along the borders
+// * H3 hexagonal discretization may be inaccurate along timezone borders
 //
-// * This is purely in-memory. Uses ~50MB of ram
+// * This is purely in-memory
 package localtimezone
 
 import (
@@ -34,18 +34,18 @@ import (
 	"github.com/uber/h3-go/v4"
 )
 
-// TZShapeFile is the data containing geographic shapes for timezone borders.
+// TZData is the data containing H3 cell-to-timezone mappings.
 // This data is H3 binary format compressed with gzip.
 //
 //go:embed data.h3.gz
-var TZShapeFile []byte
+var TZData []byte
 
-// MockTZShapeFile is similar to TZShapeFile but maps the entire world to the timezone America/Los_Angeles.
+// MockTZData is similar to TZData but maps the entire world to the timezone America/Los_Angeles.
 // This data is H3 binary format compressed with gzip.
 // It is meant for testing.
 //
 //go:embed data_mock.h3.gz
-var MockTZShapeFile []byte
+var MockTZData []byte
 
 // MockTimeZone is the timezone that is always returned from the NewMockLocalTimeZone client
 const MockTimeZone = "America/Los_Angeles"
@@ -94,7 +94,7 @@ var _ LocalTimeZone = &localTimeZone{}
 // The client is threadsafe
 func NewLocalTimeZone() (LocalTimeZone, error) {
 	z := localTimeZone{}
-	err := z.load(TZShapeFile)
+	err := z.load(TZData)
 	return &z, err
 }
 
@@ -103,16 +103,16 @@ func NewLocalTimeZone() (LocalTimeZone, error) {
 // The client is threadsafe
 func NewMockLocalTimeZone() LocalTimeZone {
 	z := localTimeZone{}
-	err := z.load(MockTZShapeFile)
+	err := z.load(MockTZData)
 	if err != nil {
-		// The MockTZShapeFile is embedded and designed to never panic
+		// The MockTZData is embedded and designed to never panic
 		panic(err)
 	}
 	return &z
 }
 
-func (z *localTimeZone) load(shapeFile []byte) error {
-	g, err := gzip.NewReader(bytes.NewBuffer(shapeFile))
+func (z *localTimeZone) load(data []byte) error {
+	g, err := gzip.NewReader(bytes.NewBuffer(data))
 	if err != nil {
 		return err
 	}
@@ -314,7 +314,7 @@ func getNauticalZone(point orb.Point) (tzids []string, err error) {
 	return append(tzids, fmt.Sprintf("Etc/GMT-%.f", z)), nil
 }
 
-// LoadGeoJSON loads a custom GeoJSON shapefile from a Reader
+// LoadGeoJSON loads custom GeoJSON timezone data from a Reader
 func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	var buf bytes.Buffer
 	_, err := buf.ReadFrom(r)
