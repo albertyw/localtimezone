@@ -26,19 +26,19 @@ func TestLoadError(t *testing.T) {
 		t.Errorf("error when initializing client")
 	}
 
-	shapeFile := []byte("asdf")
-	err = c.load(shapeFile)
+	badData := []byte("asdf")
+	err = c.load(badData)
 	if err == nil {
 		t.Errorf("expected error when loading malformed data")
 	}
 
-	shapeFile2 := bytes.NewBufferString("")
-	writer := gzip.NewWriter(shapeFile2)
+	badData2 := bytes.NewBufferString("")
+	writer := gzip.NewWriter(badData2)
 	_, err = writer.Write([]byte("asdf"))
 	if err != nil {
 		t.Errorf("cannot write to gzip, got error %v", err)
 	}
-	err = c.load(shapeFile2.Bytes())
+	err = c.load(badData2.Bytes())
 	if err == nil {
 		t.Errorf("expected error when loading malformed data")
 	}
@@ -229,10 +229,10 @@ func TestMockLocalTimeZone(t *testing.T) {
 }
 
 func TestMockLocalTimeZonePanic(t *testing.T) {
-	tempMockTZShapeFile := MockTZShapeFile
-	MockTZShapeFile = []byte("asdf")
+	tempMockTZData := MockTZData
+	MockTZData = []byte("asdf")
 	defer func() {
-		MockTZShapeFile = tempMockTZShapeFile
+		MockTZData = tempMockTZData
 		if r := recover(); r == nil {
 			t.Errorf("expected a panic; got no panic")
 		}
@@ -449,7 +449,7 @@ func TestLoadOverwrite(t *testing.T) {
 	}
 	lenCells := len(c.data.Load().cells)
 
-	err = c.load(MockTZShapeFile)
+	err = c.load(MockTZData)
 	if err != nil {
 		t.Errorf("cannot switch client to mock data, got %v", err)
 	}
