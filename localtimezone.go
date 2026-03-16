@@ -126,64 +126,60 @@ func (z *localTimeZone) loadH3(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	buf := bytes.NewReader(data)
 
-	// Read header
-	magic := make([]byte, 4)
-	if _, err := io.ReadFull(buf, magic); err != nil {
-		return err
-	}
-	if string(magic) != "H3TZ" {
-		return fmt.Errorf("invalid magic: %q", magic)
+	// Minimum size: 4 (magic) + 1 (version) + 1 (resolution) + 2 (string count) = 8
+	if len(data) < 8 {
+		return fmt.Errorf("data too short: %d bytes", len(data))
 	}
 
-	var version byte
-	if err := binary.Read(buf, binary.LittleEndian, &version); err != nil {
-		return err
+	// Read header directly from byte slice
+	if string(data[0:4]) != "H3TZ" {
+		return fmt.Errorf("invalid magic: %q", data[0:4])
 	}
+	version := data[4]
 	if version != 1 {
 		return fmt.Errorf("unsupported version: %d", version)
 	}
-
-	var resolution byte
-	if err := binary.Read(buf, binary.LittleEndian, &resolution); err != nil {
-		return err
-	}
+	resolution := data[5]
+	stringCount := binary.LittleEndian.Uint16(data[6:8])
+	off := 8
 
 	// Read string table
-	var stringCount uint16
-	if err := binary.Read(buf, binary.LittleEndian, &stringCount); err != nil {
-		return err
-	}
-
 	tzNames := make([]string, stringCount)
 	for i := uint16(0); i < stringCount; i++ {
-		var strLen uint16
-		if err := binary.Read(buf, binary.LittleEndian, &strLen); err != nil {
-			return err
+		if off+2 > len(data) {
+			return fmt.Errorf("unexpected end of data reading string table")
 		}
-		strBytes := make([]byte, strLen)
-		if _, err := io.ReadFull(buf, strBytes); err != nil {
-			return err
+		strLen := int(binary.LittleEndian.Uint16(data[off : off+2]))
+		off += 2
+		if off+strLen > len(data) {
+			return fmt.Errorf("unexpected end of data reading string")
 		}
-		tzNames[i] = string(strBytes)
+		tzNames[i] = string(data[off : off+strLen])
+		off += strLen
 	}
 
-	// Read cell data
-	var cellCount uint32
-	if err := binary.Read(buf, binary.LittleEndian, &cellCount); err != nil {
-		return err
+	// Read cell count
+	if off+4 > len(data) {
+		return fmt.Errorf("unexpected end of data reading cell count")
 	}
+	cellCount := binary.LittleEndian.Uint32(data[off : off+4])
+	off += 4
+
+	// Bulk read: each entry is 10 bytes (8 for int64 cell + 2 for uint16 tz index)
+	const entrySize = 10
+	cellDataLen := int(cellCount) * entrySize
+	if off+cellDataLen > len(data) {
+		return fmt.Errorf("unexpected end of data reading cells")
+	}
+	cellData := data[off : off+cellDataLen]
 
 	cells := make([]int64, cellCount)
 	tzIdx := make([]uint16, cellCount)
-	for i := uint32(0); i < cellCount; i++ {
-		if err := binary.Read(buf, binary.LittleEndian, &cells[i]); err != nil {
-			return err
-		}
-		if err := binary.Read(buf, binary.LittleEndian, &tzIdx[i]); err != nil {
-			return err
-		}
+	for i := 0; i < int(cellCount); i++ {
+		base := i * entrySize
+		cells[i] = int64(binary.LittleEndian.Uint64(cellData[base : base+8]))
+		tzIdx[i] = binary.LittleEndian.Uint16(cellData[base+8 : base+10])
 	}
 
 	cache := &immutableCache{

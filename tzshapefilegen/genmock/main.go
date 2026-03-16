@@ -40,28 +40,26 @@ func main() {
 	buf.Write([]byte("H3TZ"))
 	buf.WriteByte(1) // Version
 	buf.WriteByte(byte(h3Resolution))
-	if err := binary.Write(&buf, binary.LittleEndian, uint16(1)); err != nil {
-		log.Fatalf("write string count: %v", err)
-	}
+	var tmp [4]byte
+	binary.LittleEndian.PutUint16(tmp[:2], 1) // 1 timezone string
+	buf.Write(tmp[:2])
 
 	// String table
-	if err := binary.Write(&buf, binary.LittleEndian, uint16(len(tzNameBytes))); err != nil {
-		log.Fatalf("write string length: %v", err)
-	}
+	binary.LittleEndian.PutUint16(tmp[:2], uint16(len(tzNameBytes)))
+	buf.Write(tmp[:2])
 	buf.Write(tzNameBytes)
 
-	// Cell data
-	if err := binary.Write(&buf, binary.LittleEndian, uint32(len(cells))); err != nil {
-		log.Fatalf("write cell count: %v", err)
+	// Cell data: bulk write using direct byte encoding
+	binary.LittleEndian.PutUint32(tmp[:4], uint32(len(cells)))
+	buf.Write(tmp[:4])
+
+	entryBuf := make([]byte, len(cells)*10)
+	for i, c := range cells {
+		base := i * 10
+		binary.LittleEndian.PutUint64(entryBuf[base:base+8], uint64(c))
+		binary.LittleEndian.PutUint16(entryBuf[base+8:base+10], 0) // index 0 = "America/Los_Angeles"
 	}
-	for _, c := range cells {
-		if err := binary.Write(&buf, binary.LittleEndian, int64(c)); err != nil {
-			log.Fatalf("write cell: %v", err)
-		}
-		if err := binary.Write(&buf, binary.LittleEndian, uint16(0)); err != nil {
-			log.Fatalf("write tz index: %v", err)
-		}
-	}
+	buf.Write(entryBuf)
 
 	// Gzip compress
 	var compressed bytes.Buffer
