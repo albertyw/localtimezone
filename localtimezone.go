@@ -95,8 +95,82 @@ type tzData struct {
 	centers      []orb.Point
 }
 
+const (
+	gridLonCells = 360
+	gridLatCells = 180
+)
+
+type spatialGrid struct {
+	// cells stores tzData indices for each grid cell.
+	// Indexed as [lonCell * gridLatCells + latCell].
+	cells [][]int
+}
+
+func newSpatialGrid() *spatialGrid {
+	return &spatialGrid{
+		cells: make([][]int, gridLonCells*gridLatCells),
+	}
+}
+
+// cellIndex returns the grid cell index for a given lon/lat point.
+func cellIndex(lon, lat float64) int {
+	lonCell := int(lon + 180)
+	if lonCell >= gridLonCells {
+		lonCell = gridLonCells - 1
+	}
+	latCell := int(lat + 90)
+	if latCell >= gridLatCells {
+		latCell = gridLatCells - 1
+	}
+	return lonCell*gridLatCells + latCell
+}
+
+// gridCellThreshold is the maximum number of grid cells a bound can span
+// before the zone is added to the wideIndices list instead.
+const gridCellThreshold = gridLonCells * gridLatCells / 4
+
+// insert adds a tzData index to all grid cells that overlap the given bound.
+// Returns true if the index was inserted into the grid, false if the bound
+// was too wide (caller should add to wideIndices instead).
+func (g *spatialGrid) insert(idx int, bound orb.Bound) bool {
+	minLon := int(math.Floor(bound.Min[0] + 180))
+	maxLon := int(math.Floor(bound.Max[0] + 180))
+	minLat := int(math.Floor(bound.Min[1] + 90))
+	maxLat := int(math.Floor(bound.Max[1] + 90))
+	if minLon < 0 {
+		minLon = 0
+	}
+	if maxLon >= gridLonCells {
+		maxLon = gridLonCells - 1
+	}
+	if minLat < 0 {
+		minLat = 0
+	}
+	if maxLat >= gridLatCells {
+		maxLat = gridLatCells - 1
+	}
+	cellCount := (maxLon - minLon + 1) * (maxLat - minLat + 1)
+	if cellCount > gridCellThreshold {
+		return false
+	}
+	for lon := minLon; lon <= maxLon; lon++ {
+		for lat := minLat; lat <= maxLat; lat++ {
+			ci := lon*gridLatCells + lat
+			g.cells[ci] = append(g.cells[ci], idx)
+		}
+	}
+	return true
+}
+
+// candidates returns the tzData indices for the grid cell containing the point.
+func (g *spatialGrid) candidates(lon, lat float64) []int {
+	return g.cells[cellIndex(lon, lat)]
+}
+
 type immutableCache struct {
-	tzData []tzData
+	tzData      []tzData
+	grid        *spatialGrid
+	wideIndices []int
 }
 
 type localTimeZone struct {
@@ -239,7 +313,15 @@ func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err e
 		return nil, ErrOutOfRange
 	}
 	cache := z.data.Load()
-	for _, d := range cache.tzData {
+	candidates := cache.grid.candidates(p[0], p[1])
+	for i := 0; i < len(candidates)+len(cache.wideIndices); i++ {
+		var idx int
+		if i < len(candidates) {
+			idx = candidates[i]
+		} else {
+			idx = cache.wideIndices[i-len(candidates)]
+		}
+		d := &cache.tzData[idx]
 		if !d.bound.Contains(p) {
 			continue
 		}
@@ -339,7 +421,14 @@ func (z *localTimeZone) buildCache(features []*geojson.Feature) {
 	sort.Slice(tzDatas, func(i, j int) bool {
 		return tzDatas[i].id < tzDatas[j].id
 	})
-	cache := immutableCache{tzData: tzDatas}
+	grid := newSpatialGrid()
+	var wideIndices []int
+	for i, d := range tzDatas {
+		if !grid.insert(i, *d.bound) {
+			wideIndices = append(wideIndices, i)
+		}
+	}
+	cache := immutableCache{tzData: tzDatas, grid: grid, wideIndices: wideIndices}
 	z.data.Store(&cache)
 }
 
@@ -352,7 +441,7 @@ func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
 	}
 	orbData, err := geojson.UnmarshalFeatureCollection(buf.Bytes())
 	if err != nil {
-		cache := immutableCache{tzData: []tzData{}}
+		cache := immutableCache{tzData: []tzData{}, grid: newSpatialGrid(), wideIndices: nil}
 		z.data.Store(&cache)
 		return err
 	}
