@@ -2,12 +2,12 @@ package localtimezone
 
 import (
 	"bytes"
-	"compress/gzip"
 	"encoding/binary"
 	"fmt"
 	"sync"
 	"testing"
 
+	"github.com/klauspost/compress/s2"
 	"github.com/paulmach/orb"
 	"go.uber.org/goleak"
 )
@@ -32,11 +32,14 @@ func TestLoadError(t *testing.T) {
 		t.Errorf("expected error when loading malformed data")
 	}
 
-	badData2 := bytes.NewBufferString("")
-	writer := gzip.NewWriter(badData2)
+	var badData2 bytes.Buffer
+	writer := s2.NewWriter(&badData2)
 	_, err = writer.Write([]byte("asdf"))
 	if err != nil {
-		t.Errorf("cannot write to gzip, got error %v", err)
+		t.Errorf("cannot write to s2, got error %v", err)
+	}
+	if err = writer.Close(); err != nil {
+		t.Errorf("cannot close s2 writer, got error %v", err)
 	}
 	err = c.load(badData2.Bytes())
 	if err == nil {
@@ -410,7 +413,7 @@ func TestLoadGeoJSONValid(t *testing.T) {
 }
 
 func TestLoadH3Malformed(t *testing.T) {
-	// Create a gzipped payload with invalid H3 data (bad magic)
+	// Create an s2-compressed payload with invalid H3 data (bad magic)
 	var buf bytes.Buffer
 	buf.Write([]byte("XXXX")) // wrong magic
 	buf.WriteByte(1)
@@ -423,11 +426,11 @@ func TestLoadH3Malformed(t *testing.T) {
 	}
 
 	var compressed bytes.Buffer
-	gzipper := gzip.NewWriter(&compressed)
-	if _, err := gzipper.Write(buf.Bytes()); err != nil {
+	s2w := s2.NewWriter(&compressed)
+	if _, err := s2w.Write(buf.Bytes()); err != nil {
 		t.Fatal(err)
 	}
-	if err := gzipper.Close(); err != nil {
+	if err := s2w.Close(); err != nil {
 		t.Fatal(err)
 	}
 

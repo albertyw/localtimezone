@@ -8,7 +8,6 @@ import (
 	"encoding/binary"
 	"flag"
 	"fmt"
-	"github.com/klauspost/compress/s2"
 	"io"
 	"log"
 	"net/http"
@@ -17,6 +16,7 @@ import (
 	"sync"
 
 	"github.com/goccy/go-json"
+	"github.com/klauspost/compress/s2"
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geojson"
 	"github.com/uber/h3-go/v4"
