@@ -28,23 +28,23 @@ import (
 	"sort"
 	"sync/atomic"
 
-	"github.com/klauspost/compress/gzip"
+	"github.com/klauspost/compress/s2"
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geojson"
 	"github.com/uber/h3-go/v4"
 )
 
 // TZData is the data containing H3 cell-to-timezone mappings.
-// This data is H3 binary format compressed with gzip.
+// This data is H3 binary format compressed with S2.
 //
-//go:embed data.h3.gz
+//go:embed data.h3.s2
 var TZData []byte
 
 // MockTZData is similar to TZData but maps the entire world to the timezone America/Los_Angeles.
-// This data is H3 binary format compressed with gzip.
+// This data is H3 binary format compressed with S2.
 // It is meant for testing.
 //
-//go:embed data_mock.h3.gz
+//go:embed data_mock.h3.s2
 var MockTZData []byte
 
 // MockTimeZone is the timezone that is always returned from the NewMockLocalTimeZone client
@@ -112,13 +112,7 @@ func NewMockLocalTimeZone() LocalTimeZone {
 }
 
 func (z *localTimeZone) load(data []byte) error {
-	g, err := gzip.NewReader(bytes.NewBuffer(data))
-	if err != nil {
-		return err
-	}
-	defer g.Close()
-
-	return z.loadH3(g)
+	return z.loadH3(s2.NewReader(bytes.NewReader(data)))
 }
 
 func (z *localTimeZone) loadH3(r io.Reader) error {

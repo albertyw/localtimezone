@@ -5,7 +5,6 @@ package main
 import (
 	"archive/zip"
 	"bytes"
-	"compress/gzip"
 	"encoding/binary"
 	"flag"
 	"fmt"
@@ -17,6 +16,7 @@ import (
 	"sync"
 
 	"github.com/goccy/go-json"
+	"github.com/klauspost/compress/s2"
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geojson"
 	"github.com/uber/h3-go/v4"
@@ -329,30 +329,23 @@ func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 }
 
 func generateData(data []byte) ([]byte, error) {
-	buffer := bytes.NewBuffer([]byte{})
-	gzipper, err := gzip.NewWriterLevel(buffer, gzip.BestCompression)
-	if err != nil {
-		log.Printf("Error: could not create gzip writer: %v\n", err)
+	var buffer bytes.Buffer
+	w := s2.NewWriter(&buffer, s2.WriterBestCompression())
+	if _, err := w.Write(data); err != nil {
+		log.Printf("Error: could not compress data: %v\n", err)
 		return nil, err
 	}
-
-	_, err = gzipper.Write(data)
-	if err != nil {
-		log.Printf("Error: could not copy data: %v\n", err)
+	if err := w.Close(); err != nil {
+		log.Printf("Error: could not flush/close s2 writer: %v\n", err)
 		return nil, err
 	}
-	if err := gzipper.Close(); err != nil {
-		log.Printf("Error: could not flush/close gzip: %v\n", err)
-		return nil, err
-	}
-
 	return buffer.Bytes(), nil
 }
 
 func writeData(content []byte) error {
-	err := os.WriteFile("data.h3.gz", content, 0644)
+	err := os.WriteFile("data.h3.s2", content, 0644)
 	if err != nil {
-		log.Printf("Error: could not write data.h3.gz: %v\n", err)
+		log.Printf("Error: could not write data.h3.s2: %v\n", err)
 		return err
 	}
 	return nil

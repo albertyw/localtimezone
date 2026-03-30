@@ -1,16 +1,16 @@
-// Generates data_mock.h3.gz — a small H3 dataset mapping all base cells
+// Generates data_mock.h3.s2 — a small H3 dataset mapping all base cells
 // to "America/Los_Angeles" for testing purposes.
 package main
 
 import (
 	"bytes"
-	"compress/gzip"
 	"encoding/binary"
 	"fmt"
 	"log"
 	"os"
 	"sort"
 
+	"github.com/klauspost/compress/s2"
 	"github.com/uber/h3-go/v4"
 )
 
@@ -61,22 +61,19 @@ func main() {
 	}
 	buf.Write(entryBuf)
 
-	// Gzip compress
+	// S2 compress
 	var compressed bytes.Buffer
-	gzipper, err := gzip.NewWriterLevel(&compressed, gzip.BestCompression)
-	if err != nil {
-		log.Fatalf("gzip writer: %v", err)
+	w := s2.NewWriter(&compressed, s2.WriterBestCompression())
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		log.Fatalf("s2 write: %v", err)
 	}
-	if _, err := gzipper.Write(buf.Bytes()); err != nil {
-		log.Fatalf("gzip write: %v", err)
-	}
-	if err := gzipper.Close(); err != nil {
-		log.Fatalf("gzip close: %v", err)
+	if err := w.Close(); err != nil {
+		log.Fatalf("s2 close: %v", err)
 	}
 
-	err = os.WriteFile("data_mock.h3.gz", compressed.Bytes(), 0644)
+	err = os.WriteFile("data_mock.h3.s2", compressed.Bytes(), 0644)
 	if err != nil {
 		log.Fatalf("write file: %v", err)
 	}
-	fmt.Printf("Wrote data_mock.h3.gz (%d bytes)\n", compressed.Len())
+	fmt.Printf("Wrote data_mock.h3.s2 (%d bytes)\n", compressed.Len())
 }
