@@ -6,6 +6,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -15,7 +16,6 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/goccy/go-json"
 	"github.com/klauspost/compress/s2"
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geojson"
@@ -39,12 +39,6 @@ var TZNames = []string{
 `
 const defaultRelease = "default"
 const h3Resolution = 7
-
-type unmarshaler struct{}
-
-func (u unmarshaler) Unmarshal(data []byte, v interface{}) error {
-	return json.Unmarshal(data, v)
-}
 
 func getMostCurrentRelease() (version string, url string, err error) {
 	resp, err := http.Get("https://api.github.com/repos/evansiroky/timezone-boundary-builder/releases")
@@ -158,8 +152,6 @@ type cellEntry struct {
 }
 
 func orbExec(combinedJSON []byte) ([]byte, []string, error) {
-	geojson.CustomJSONUnmarshaler = unmarshaler{}
-
 	fc, err := geojson.UnmarshalFeatureCollection(combinedJSON)
 	if err != nil {
 		log.Printf("Error: could not parse combined.json: %v\n", err)
