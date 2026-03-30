@@ -43,7 +43,6 @@ Uses timezone boundary data from [timezone-boundary-builder](https://github.com/
 
 - The timezone data is embedded in the build binary
 - `GetZone()` returns all timezones at a location; `GetOneZone()` returns a single result
-- You can load custom GeoJSON data for alternative data sources
 - Thread-safe for concurrent lookups
 - Lookups are purely in-memory. Uses ~32MB of RAM.
 

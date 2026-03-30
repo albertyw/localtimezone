@@ -358,60 +358,6 @@ func TestOutOfRange(t *testing.T) {
 	}
 }
 
-func TestLoadGeoJSONMalformed(t *testing.T) {
-	data := "{"
-	reader := bytes.NewBufferString(data)
-	client, err := NewLocalTimeZone()
-	if err != nil {
-		t.Errorf("cannot initialize client, got %v", err)
-	}
-	c, ok := client.(*localTimeZone)
-	if !ok {
-		t.Errorf("cannot initialize client")
-	}
-	err = c.LoadGeoJSON(reader)
-	if err == nil {
-		t.Errorf("expected error, got %v", err)
-	}
-	if len(c.data.Load().cells) != 0 {
-		t.Errorf("cells not reset")
-	}
-}
-
-func TestLoadGeoJSONValid(t *testing.T) {
-	geojsonData := `{
-		"type": "FeatureCollection",
-		"features": [{
-			"type": "Feature",
-			"properties": {"tzid": "America/New_York"},
-			"geometry": {
-				"type": "Polygon",
-				"coordinates": [[[-80,35],[-75,35],[-75,40],[-80,40],[-80,35]]]
-			}
-		}]
-	}`
-	reader := bytes.NewBufferString(geojsonData)
-	z := &localTimeZone{}
-	// Initialize with empty cache so LoadGeoJSON can overwrite
-	cache := &immutableCache{
-		tzNames: []string{},
-		cells:   []int64{},
-		tzIdx:   []uint16{},
-	}
-	z.data.Store(cache)
-	err := z.LoadGeoJSON(reader)
-	if err != nil {
-		t.Fatalf("LoadGeoJSON: %v", err)
-	}
-	tzids, err := z.GetZone(Point{Lon: -77.5, Lat: 37.5})
-	if err != nil {
-		t.Fatalf("GetZone: %v", err)
-	}
-	if len(tzids) != 1 || tzids[0] != "America/New_York" {
-		t.Errorf("expected [America/New_York], got %v", tzids)
-	}
-}
-
 func TestLoadH3Malformed(t *testing.T) {
 	// Create an s2-compressed payload with invalid H3 data (bad magic)
 	var buf bytes.Buffer
