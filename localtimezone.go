@@ -6,8 +6,6 @@
 //
 // * Supports overlapping zones
 //
-// * You can load your own geojson data if you want
-//
 // * Sub millisecond lookup even on old hardware
 //
 // # Problems
@@ -30,7 +28,6 @@ import (
 
 	"github.com/klauspost/compress/s2"
 	"github.com/paulmach/orb"
-	"github.com/paulmach/orb/geojson"
 	"github.com/uber/h3-go/v4"
 )
 
@@ -65,16 +62,10 @@ type Point struct {
 	Lat float64
 }
 
-func init() {
-	// Set a faster json unmarshaller
-	geojson.CustomJSONUnmarshaler = unmarshaler{}
-}
-
 // LocalTimeZone is a client for looking up time zones by Points
 type LocalTimeZone interface {
 	GetZone(p Point) (tzids []string, err error)
 	GetOneZone(p Point) (tzid string, err error)
-	LoadGeoJSON(io.Reader) error
 }
 
 type immutableCache struct {
@@ -306,120 +297,4 @@ func getNauticalZone(point orb.Point) (tzids []string, err error) {
 		return append(tzids, fmt.Sprintf("Etc/GMT+%.f", z)), nil
 	}
 	return append(tzids, fmt.Sprintf("Etc/GMT-%.f", z)), nil
-}
-
-// LoadGeoJSON loads custom GeoJSON timezone data from a Reader
-func (z *localTimeZone) LoadGeoJSON(r io.Reader) error {
-	var buf bytes.Buffer
-	_, err := buf.ReadFrom(r)
-	if err != nil {
-		return err
-	}
-	orbData, err := geojson.UnmarshalFeatureCollection(buf.Bytes())
-	if err != nil {
-		cache := &immutableCache{
-			tzNames: []string{},
-			cells:   []int64{},
-			tzIdx:   []uint16{},
-		}
-		z.data.Store(cache)
-		return err
-	}
-	z.buildCacheFromGeoJSON(orbData.Features)
-	return nil
-}
-
-// buildCacheFromGeoJSON converts GeoJSON features to H3 cells at runtime
-func (z *localTimeZone) buildCacheFromGeoJSON(features []*geojson.Feature) {
-	const defaultResolution = 7
-
-	type cellEntry struct {
-		cell  int64
-		tzIdx uint16
-	}
-
-	// Build string table
-	tzNameMap := make(map[string]uint16)
-	var tzNames []string
-	for _, f := range features {
-		id := f.Properties.MustString("tzid")
-		if _, exists := tzNameMap[id]; !exists {
-			tzNameMap[id] = uint16(len(tzNames))
-			tzNames = append(tzNames, id)
-		}
-	}
-
-	// Convert each feature's geometry to H3 cells
-	var entries []cellEntry
-	for _, f := range features {
-		id := f.Properties.MustString("tzid")
-		idx := tzNameMap[id]
-
-		var polygons []orb.Polygon
-		switch g := f.Geometry.(type) {
-		case orb.Polygon:
-			polygons = []orb.Polygon{g}
-		case orb.MultiPolygon:
-			polygons = []orb.Polygon(g)
-		default:
-			continue
-		}
-
-		for _, polygon := range polygons {
-			geoPolygon := orbPolygonToH3(polygon)
-			if len(geoPolygon.GeoLoop) == 0 {
-				continue
-			}
-			cells, err := h3.PolygonToCells(geoPolygon, defaultResolution)
-			if err != nil {
-				continue
-			}
-			for _, c := range cells {
-				entries = append(entries, cellEntry{cell: int64(c), tzIdx: idx})
-			}
-		}
-	}
-
-	// Sort by cell value
-	sort.Slice(entries, func(i, j int) bool {
-		if entries[i].cell == entries[j].cell {
-			return entries[i].tzIdx < entries[j].tzIdx
-		}
-		return entries[i].cell < entries[j].cell
-	})
-
-	cells := make([]int64, len(entries))
-	tzIdx := make([]uint16, len(entries))
-	for i, e := range entries {
-		cells[i] = e.cell
-		tzIdx[i] = e.tzIdx
-	}
-
-	cache := &immutableCache{
-		tzNames:    tzNames,
-		cells:      cells,
-		tzIdx:      tzIdx,
-		resolution: defaultResolution,
-	}
-	z.data.Store(cache)
-}
-
-// orbPolygonToH3 converts an orb.Polygon to an h3.GeoPolygon
-func orbPolygonToH3(polygon orb.Polygon) h3.GeoPolygon {
-	if len(polygon) == 0 {
-		return h3.GeoPolygon{}
-	}
-	outer := make(h3.GeoLoop, len(polygon[0]))
-	for i, pt := range polygon[0] {
-		outer[i] = h3.NewLatLng(pt[1], pt[0]) // orb: [lon, lat], h3: (lat, lng)
-	}
-	var holes []h3.GeoLoop
-	for _, ring := range polygon[1:] {
-		hole := make(h3.GeoLoop, len(ring))
-		for i, pt := range ring {
-			hole[i] = h3.NewLatLng(pt[1], pt[0])
-		}
-		holes = append(holes, hole)
-	}
-	return h3.GeoPolygon{GeoLoop: outer, Holes: holes}
 }
