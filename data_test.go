@@ -9,14 +9,14 @@ import (
 
 // city and lat/lon data is from Pareto Software LLC, SimpleMaps.com
 // https://simplemaps.com/data/world-cities
-type TimezoneTestCase struct {
+type timezoneTestCase struct {
 	City         string
 	Lat          float64
 	Lon          float64
 	ExpectedZone string
 }
 
-func generateTestCases() ([]TimezoneTestCase, error) {
+func generateTestCases() ([]timezoneTestCase, error) {
 	f, err := os.Open("test/testdata.csv")
 	if err != nil {
 		return nil, err
@@ -32,7 +32,7 @@ func generateTestCases() ([]TimezoneTestCase, error) {
 		return nil, err
 	}
 
-	var data []TimezoneTestCase
+	var data []timezoneTestCase
 	for _, line := range rawData {
 		lat, err := strconv.ParseFloat(line[1], 64)
 		if err != nil {
@@ -42,7 +42,7 @@ func generateTestCases() ([]TimezoneTestCase, error) {
 		if err != nil {
 			return nil, err
 		}
-		tc := TimezoneTestCase{
+		tc := timezoneTestCase{
 			City:         line[0],
 			Lat:          lat,
 			Lon:          lon,
@@ -164,7 +164,7 @@ func BenchmarkGetZone(b *testing.B) {
 			if err != nil {
 				b.Errorf("point %v did not return a zone", point)
 			}
-			n += 1
+			n++
 		}
 	})
 	b.Run("GetOneZone on large cities", func(b *testing.B) {

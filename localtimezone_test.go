@@ -68,7 +68,7 @@ type result struct {
 	err   error
 }
 
-var tt = []struct {
+var _tt = []struct {
 	name  string
 	point Point
 	result
@@ -161,7 +161,7 @@ func TestGetZone(t *testing.T) {
 	if err != nil {
 		t.Errorf("cannot initialize timezone client: %v", err)
 	}
-	for _, tc := range tt {
+	for _, tc := range _tt {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			tzids, err := z.GetZone(tc.point)
@@ -189,7 +189,7 @@ func TestGetOneZone(t *testing.T) {
 	if err != nil {
 		t.Errorf("cannot initialize timezone client: %v", err)
 	}
-	for _, tc := range tt {
+	for _, tc := range _tt {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			tzid, err := z.GetOneZone(tc.point)
@@ -211,7 +211,7 @@ func TestGetOneZone(t *testing.T) {
 
 func TestMockLocalTimeZone(t *testing.T) {
 	z := NewMockLocalTimeZone()
-	for _, tc := range tt {
+	for _, tc := range _tt {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			tzids, err := z.GetZone(tc.point)
@@ -256,8 +256,8 @@ func BenchmarkZones(b *testing.B) {
 	}
 
 	b.Run("test cases", func(b *testing.B) {
-		points := make([]Point, 0, len(tt))
-		for _, tc := range tt {
+		points := make([]Point, 0, len(_tt))
+		for _, tc := range _tt {
 			if tc.err != nil {
 				continue
 			}

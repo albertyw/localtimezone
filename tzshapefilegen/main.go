@@ -84,14 +84,13 @@ func getMostCurrentRelease() (version string, url string, err error) {
 func getGeoJSON(releaseURL string) ([]byte, error) {
 	resp, err := http.Get(releaseURL)
 	if err != nil {
-		log.Fatalf("Error: could not download tz data: %v\n", err)
+		return nil, fmt.Errorf("could not download tz data: %w", err)
 	}
 
-	buffer := bytes.NewBuffer([]byte{})
-	_, err = io.Copy(buffer, resp.Body)
+	var buffer bytes.Buffer
+	_, err = io.Copy(&buffer, resp.Body)
 	if err != nil {
-		log.Printf("Download failed: %v\n", err)
-		return nil, err
+		return nil, fmt.Errorf("download failed: %w", err)
 	}
 	err = resp.Body.Close()
 	if err != nil {
@@ -101,27 +100,23 @@ func getGeoJSON(releaseURL string) ([]byte, error) {
 	bufferReader := bytes.NewReader(buffer.Bytes())
 	zipReader, err := zip.NewReader(bufferReader, resp.ContentLength)
 	if err != nil {
-		log.Printf("Could not access zipfile: %v\n", err)
-		return nil, err
+		return nil, fmt.Errorf("could not access zipfile: %w", err)
 	}
 	if len(zipReader.File) == 0 {
-		log.Println("Error: release zip file have no files!")
-		return nil, err
-	} else if zipReader.File[0].Name != "combined.json" {
-		log.Println("Error: first file in zip file is not combined.json")
-		return nil, err
+		return nil, fmt.Errorf("release zip file has no files")
+	}
+	if zipReader.File[0].Name != "combined.json" {
+		return nil, fmt.Errorf("first file in zip is not combined.json")
 	}
 
 	geojsonDataReader, err := zipReader.File[0].Open()
 	if err != nil {
-		log.Printf("Error: could not read from zip file: %v\n", err)
-		return nil, err
+		return nil, fmt.Errorf("could not read from zip file: %w", err)
 	}
 
 	geojsonData, err := io.ReadAll(geojsonDataReader)
 	if err != nil {
-		log.Printf("Error: could not read combined.json from zip file: %v\n", err)
-		return nil, err
+		return nil, fmt.Errorf("could not read combined.json from zip file: %w", err)
 	}
 	return geojsonData, nil
 }
@@ -154,13 +149,12 @@ type cellEntry struct {
 func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 	fc, err := geojson.UnmarshalFeatureCollection(combinedJSON)
 	if err != nil {
-		log.Printf("Error: could not parse combined.json: %v\n", err)
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("could not parse combined.json: %w", err)
 	}
 
 	// Build string table: map tzid -> index
 	tzNameSet := make(map[string]bool)
-	tzidList := []string{}
+	var tzidList []string
 	for _, feature := range fc.Features {
 		tzid := feature.Properties.MustString("tzid")
 		if tzid == "" {
@@ -324,21 +318,17 @@ func generateData(data []byte) ([]byte, error) {
 	var buffer bytes.Buffer
 	w := s2.NewWriter(&buffer, s2.WriterBestCompression())
 	if _, err := w.Write(data); err != nil {
-		log.Printf("Error: could not compress data: %v\n", err)
-		return nil, err
+		return nil, fmt.Errorf("could not compress data: %w", err)
 	}
 	if err := w.Close(); err != nil {
-		log.Printf("Error: could not flush/close s2 writer: %v\n", err)
-		return nil, err
+		return nil, fmt.Errorf("could not flush/close s2 writer: %w", err)
 	}
 	return buffer.Bytes(), nil
 }
 
 func writeData(content []byte) error {
-	err := os.WriteFile("data.h3.s2", content, 0644)
-	if err != nil {
-		log.Printf("Error: could not write data.h3.s2: %v\n", err)
-		return err
+	if err := os.WriteFile("data.h3.s2", content, 0644); err != nil {
+		return fmt.Errorf("could not write data.h3.s2: %w", err)
 	}
 	return nil
 }
@@ -349,25 +339,13 @@ func writeVersion(release string, tzNames []string) error {
 		tzNamesFormatted += fmt.Sprintf("	%q,\n", tzid)
 	}
 	content := fmt.Sprintf(versionTemplate, release, len(tzNames), tzNamesFormatted)
-	outfile, err := os.Create("version.go")
-	if err != nil {
-		log.Printf("Error: could not create version.go: %v", err)
-		return err
-	}
-
-	_, err = outfile.WriteString(content)
-	if err != nil {
-		log.Printf("Error: could not write content: %v", err)
-		return err
-	}
-	err = outfile.Close()
-	if err != nil {
-		return err
+	if err := os.WriteFile("version.go", []byte(content), 0644); err != nil {
+		return fmt.Errorf("could not write version.go: %w", err)
 	}
 	return nil
 }
 
-func main() {
+func run() error {
 	release := flag.String("release", defaultRelease, "timezone boundary builder release version")
 	flag.Parse()
 
@@ -377,7 +355,7 @@ func main() {
 	if *release == defaultRelease {
 		*release, releaseURL, err = getMostCurrentRelease()
 		if err != nil {
-			log.Fatalln(err)
+			return err
 		}
 	} else {
 		releaseURL = fmt.Sprintf(dlURL, *release)
@@ -387,31 +365,36 @@ func main() {
 	fmt.Println("*** GETTING TIMEZONE BOUNDARY DATA ***")
 	geojsonData, err := getGeoJSON(releaseURL)
 	if err != nil {
-		return
+		return err
 	}
 
 	fmt.Println("*** CONVERTING TO H3 CELLS ***")
 	h3Data, tzNames, err := orbExec(geojsonData)
 	if err != nil {
-		return
+		return err
 	}
 	fmt.Println("*** H3 CONVERSION FINISHED ***")
 
 	fmt.Println("*** GENERATING COMPRESSED DATA ***")
 	content, err := generateData(h3Data)
 	if err != nil {
-		return
+		return err
 	}
 
-	err = writeData(content)
-	if err != nil {
-		return
+	if err := writeData(content); err != nil {
+		return err
 	}
 
-	err = writeVersion(*release, tzNames)
-	if err != nil {
-		return
+	if err := writeVersion(*release, tzNames); err != nil {
+		return err
 	}
 
 	fmt.Println("*** ALL DONE, YAY ***")
+	return nil
+}
+
+func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
 }
