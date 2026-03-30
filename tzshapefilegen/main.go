@@ -1,4 +1,4 @@
-// Code generation tool for embedding the timezone shapefile in the gotz package
+// Code generation tool for embedding the timezone H3 data in the localtimezone package
 // run "go generate" in the parent directory after changing the -release flag in gen.go
 package main
 
@@ -14,11 +14,12 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"sync"
 
 	"github.com/goccy/go-json"
-	"github.com/paulmach/orb/encoding/wkb"
+	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geojson"
-	"github.com/paulmach/orb/simplify"
+	"github.com/uber/h3-go/v4"
 )
 
 const dlURL = "https://github.com/evansiroky/timezone-boundary-builder/releases/download/%s/timezones.geojson.zip"
@@ -37,6 +38,7 @@ var TZNames = []string{
 %s}
 `
 const defaultRelease = "default"
+const h3Resolution = 7
 
 type unmarshaler struct{}
 
@@ -88,7 +90,7 @@ func getMostCurrentRelease() (version string, url string, err error) {
 func getGeoJSON(releaseURL string) ([]byte, error) {
 	resp, err := http.Get(releaseURL)
 	if err != nil {
-		log.Fatalf("Error: could not download tz shapefile: %v\n", err)
+		log.Fatalf("Error: could not download tz data: %v\n", err)
 	}
 
 	buffer := bytes.NewBuffer([]byte{})
@@ -130,6 +132,31 @@ func getGeoJSON(releaseURL string) ([]byte, error) {
 	return geojsonData, nil
 }
 
+// orbPolygonToH3 converts an orb.Polygon to an h3.GeoPolygon
+func orbPolygonToH3(polygon orb.Polygon) h3.GeoPolygon {
+	if len(polygon) == 0 {
+		return h3.GeoPolygon{}
+	}
+	outer := make(h3.GeoLoop, len(polygon[0]))
+	for i, pt := range polygon[0] {
+		outer[i] = h3.NewLatLng(pt[1], pt[0]) // orb: [lon, lat], h3: (lat, lng)
+	}
+	var holes []h3.GeoLoop
+	for _, ring := range polygon[1:] {
+		hole := make(h3.GeoLoop, len(ring))
+		for i, pt := range ring {
+			hole[i] = h3.NewLatLng(pt[1], pt[0])
+		}
+		holes = append(holes, hole)
+	}
+	return h3.GeoPolygon{GeoLoop: outer, Holes: holes}
+}
+
+type cellEntry struct {
+	cell  h3.Cell
+	tzIdx uint16
+}
+
 func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 	geojson.CustomJSONUnmarshaler = unmarshaler{}
 
@@ -138,56 +165,170 @@ func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 		log.Printf("Error: could not parse combined.json: %v\n", err)
 		return nil, nil, err
 	}
-	type simplifiedFeature struct {
-		tzid string
-		wkb  []byte
-	}
-	var features []simplifiedFeature
-	tzNames := []string{}
+
+	// Build string table: map tzid -> index
+	tzNameSet := make(map[string]bool)
+	tzidList := []string{}
 	for _, feature := range fc.Features {
 		tzid := feature.Properties.MustString("tzid")
 		if tzid == "" {
 			break
 		}
-		geometry := simplify.Visvalingam(0.0008, 4).Simplify(feature.Geometry)
-		wkbBytes, err := wkb.Marshal(geometry)
-		if err != nil {
-			log.Printf("Error: could not marshal WKB for %s: %v\n", tzid, err)
-			return nil, nil, err
+		if !tzNameSet[tzid] {
+			tzNameSet[tzid] = true
+			tzidList = append(tzidList, tzid)
 		}
-		features = append(features, simplifiedFeature{tzid: tzid, wkb: wkbBytes})
-		tzNames = append(tzNames, tzid)
 	}
-	sort.Slice(features, func(i, j int) bool {
-		return features[i].tzid < features[j].tzid
+	sort.Strings(tzidList)
+	tzNameIndex := make(map[string]uint16, len(tzidList))
+	for i, name := range tzidList {
+		tzNameIndex[name] = uint16(i)
+	}
+
+	// Collect all cells per timezone (parallelized)
+	type featureResult struct {
+		tzid  string
+		cells []h3.Cell
+	}
+	results := make([]featureResult, len(fc.Features))
+	var wg sync.WaitGroup
+	for i, feature := range fc.Features {
+		tzid := feature.Properties.MustString("tzid")
+		if tzid == "" {
+			break
+		}
+
+		var polygons []orb.Polygon
+		switch g := feature.Geometry.(type) {
+		case orb.Polygon:
+			polygons = []orb.Polygon{g}
+		case orb.MultiPolygon:
+			polygons = []orb.Polygon(g)
+		default:
+			log.Printf("Warning: unsupported geometry type for %s: %T\n", tzid, feature.Geometry)
+			continue
+		}
+
+		wg.Add(1)
+		go func(idx int, tzid string, polygons []orb.Polygon) {
+			defer wg.Done()
+			var cells []h3.Cell
+			for _, polygon := range polygons {
+				geoPolygon := orbPolygonToH3(polygon)
+				if len(geoPolygon.GeoLoop) == 0 {
+					continue
+				}
+				c, err := h3.PolygonToCells(geoPolygon, h3Resolution)
+				if err != nil {
+					log.Printf("Warning: PolygonToCells failed for %s: %v\n", tzid, err)
+					continue
+				}
+				cells = append(cells, c...)
+			}
+			results[idx] = featureResult{tzid: tzid, cells: cells}
+			fmt.Printf("  Processed %s (%d cells)\n", tzid, len(cells))
+		}(i, tzid, polygons)
+	}
+	wg.Wait()
+
+	// Merge results into per-timezone map
+	tzCells := make(map[string][]h3.Cell)
+	for _, r := range results {
+		if r.tzid != "" {
+			tzCells[r.tzid] = append(tzCells[r.tzid], r.cells...)
+		}
+	}
+
+	// Deduplicate and compact cells per timezone
+	var entries []cellEntry
+	totalBefore := 0
+	totalAfter := 0
+	for tzid, cells := range tzCells {
+		// Deduplicate
+		seen := make(map[h3.Cell]bool, len(cells))
+		unique := make([]h3.Cell, 0, len(cells))
+		for _, c := range cells {
+			if !seen[c] {
+				seen[c] = true
+				unique = append(unique, c)
+			}
+		}
+		totalBefore += len(unique)
+		if len(unique) == 0 {
+			log.Printf("Warning: no cells generated for %s\n", tzid)
+			continue
+		}
+
+		// Compact: merges groups of 7 sibling cells into their parent
+		compacted, err := h3.CompactCells(unique)
+		if err != nil {
+			log.Printf("Warning: CompactCells failed for %s, using uncompacted: %v\n", tzid, err)
+			compacted = unique
+		}
+		totalAfter += len(compacted)
+
+		idx := tzNameIndex[tzid]
+		for _, c := range compacted {
+			entries = append(entries, cellEntry{cell: c, tzIdx: idx})
+		}
+	}
+	fmt.Printf("Compaction: %d cells -> %d cells (%.1f%% reduction)\n",
+		totalBefore, totalAfter, 100.0*(1.0-float64(totalAfter)/float64(totalBefore)))
+
+	// Sort entries by cell value for binary search
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].cell == entries[j].cell {
+			return entries[i].tzIdx < entries[j].tzIdx
+		}
+		return entries[i].cell < entries[j].cell
 	})
 
 	// Build binary format
 	var buf bytes.Buffer
-	if err := binary.Write(&buf, binary.LittleEndian, uint32(len(features))); err != nil {
+
+	// Header
+	buf.Write([]byte("H3TZ"))
+	buf.WriteByte(1) // Version
+	buf.WriteByte(byte(h3Resolution))
+	if err := binary.Write(&buf, binary.LittleEndian, uint16(len(tzidList))); err != nil {
 		return nil, nil, err
 	}
-	for _, f := range features {
-		tzidBytes := []byte(f.tzid)
-		if err := binary.Write(&buf, binary.LittleEndian, uint16(len(tzidBytes))); err != nil {
+
+	// String table
+	for _, name := range tzidList {
+		nameBytes := []byte(name)
+		if err := binary.Write(&buf, binary.LittleEndian, uint16(len(nameBytes))); err != nil {
 			return nil, nil, err
 		}
-		buf.Write(tzidBytes)
-		if err := binary.Write(&buf, binary.LittleEndian, uint32(len(f.wkb))); err != nil {
-			return nil, nil, err
-		}
-		buf.Write(f.wkb)
+		buf.Write(nameBytes)
 	}
 
-	tzNames = append(tzNames, "Etc/GMT")
-	for offset := 1; offset <= 12; offset += 1 {
-		tzNames = append(tzNames, fmt.Sprintf("Etc/GMT+%d", offset), fmt.Sprintf("Etc/GMT-%d", offset))
+	// Cell data: bulk write using direct byte encoding
+	var countBuf [4]byte
+	binary.LittleEndian.PutUint32(countBuf[:], uint32(len(entries)))
+	buf.Write(countBuf[:])
+
+	entryBuf := make([]byte, len(entries)*10)
+	for i, e := range entries {
+		base := i * 10
+		binary.LittleEndian.PutUint64(entryBuf[base:base+8], uint64(e.cell))
+		binary.LittleEndian.PutUint16(entryBuf[base+8:base+10], e.tzIdx)
 	}
-	sort.Strings(tzNames)
-	return buf.Bytes(), tzNames, nil
+	buf.Write(entryBuf)
+
+	// Build full tzNames list including nautical zones
+	allTzNames := make([]string, len(tzidList))
+	copy(allTzNames, tzidList)
+	allTzNames = append(allTzNames, "Etc/GMT")
+	for offset := 1; offset <= 12; offset++ {
+		allTzNames = append(allTzNames, fmt.Sprintf("Etc/GMT+%d", offset), fmt.Sprintf("Etc/GMT-%d", offset))
+	}
+	sort.Strings(allTzNames)
+
+	return buf.Bytes(), allTzNames, nil
 }
 
-func generateData(geoJSON []byte) ([]byte, error) {
+func generateData(data []byte) ([]byte, error) {
 	buffer := bytes.NewBuffer([]byte{})
 	gzipper, err := gzip.NewWriterLevel(buffer, gzip.BestCompression)
 	if err != nil {
@@ -195,7 +336,7 @@ func generateData(geoJSON []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	_, err = gzipper.Write(geoJSON)
+	_, err = gzipper.Write(data)
 	if err != nil {
 		log.Printf("Error: could not copy data: %v\n", err)
 		return nil, err
@@ -209,9 +350,9 @@ func generateData(geoJSON []byte) ([]byte, error) {
 }
 
 func writeData(content []byte) error {
-	err := os.WriteFile("data.wkb.gz", content, 0644)
+	err := os.WriteFile("data.h3.gz", content, 0644)
 	if err != nil {
-		log.Printf("Error: could not write data.wkb.gz: %v\n", err)
+		log.Printf("Error: could not write data.h3.gz: %v\n", err)
 		return err
 	}
 	return nil
@@ -264,15 +405,15 @@ func main() {
 		return
 	}
 
-	fmt.Println("*** SIMPLIFYING GEOJSON ***")
-	geojsonData, tzNames, err := orbExec(geojsonData)
+	fmt.Println("*** CONVERTING TO H3 CELLS ***")
+	h3Data, tzNames, err := orbExec(geojsonData)
 	if err != nil {
 		return
 	}
-	fmt.Println("*** GEOJSON FINISHED ***")
+	fmt.Println("*** H3 CONVERSION FINISHED ***")
 
-	fmt.Println("*** GENERATING GO CODE ***")
-	content, err := generateData(geojsonData)
+	fmt.Println("*** GENERATING COMPRESSED DATA ***")
+	content, err := generateData(h3Data)
 	if err != nil {
 		return
 	}

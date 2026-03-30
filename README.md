@@ -37,17 +37,15 @@ fmt.Println(zone[0])
 
 Note: `GetZone()` may return an error only for out-of-range coordinates; it returns the nearest timezone for all valid locations.
 
-Uses simplified shapefile from [timezone-boundary-builder](https://github.com/evansiroky/timezone-boundary-builder/)
-
-Built with [orb](https://github.com/paulmach/orb) for high-performance geometry handling and WKB serialization.
+Uses timezone boundary data from [timezone-boundary-builder](https://github.com/evansiroky/timezone-boundary-builder/), indexed with [H3](https://h3geo.org/) hexagonal cells for fast lookups.
 
 ## Features
 
-- The timezone shapefile is embedded in the build binary
+- The timezone data is embedded in the build binary
 - `GetZone()` returns all timezones at a location; `GetOneZone()` returns a single result
-- You can load a custom GeoJSON shapefile for alternative data sources
+- You can load custom GeoJSON data for alternative data sources
 - Thread-safe for concurrent lookups
-- Lookups are purely in-memory. Uses ~8MB of RAM.
+- Lookups are purely in-memory. Uses ~32MB of RAM.
 
 ### Benchmarks
 
@@ -57,21 +55,20 @@ goos: linux
 goarch: amd64
 pkg: github.com/albertyw/localtimezone/v3
 cpu: AMD Ryzen 9 7900X 12-Core Processor
-BenchmarkGetZone/GetZone_on_large_cities-24                41272             29076 ns/op              16 B/op          1 allocs/op
-BenchmarkGetZone/GetOneZone_on_large_cities-24             54379             21986 ns/op              16 B/op          1 allocs/op
-BenchmarkZones/polygon_centers-24                          75387             15807 ns/op              16 B/op          1 allocs/op
-BenchmarkZones/test_cases-24                              170304              6982 ns/op              18 B/op          1 allocs/op
-BenchmarkClientInit/main_client-24                           153           7821843 ns/op         7265567 B/op       9161 allocs/op
-BenchmarkClientInit/mock_client-24                        113492             10889 ns/op           37880 B/op         30 allocs/op
+BenchmarkGetZone/GetZone_on_large_cities-24              1000000              1071 ns/op             112 B/op         11 allocs/op
+BenchmarkGetZone/GetOneZone_on_large_cities-24           1273423               940.3 ns/op            90 B/op          8 allocs/op
+BenchmarkZones/test_cases-24                              239356              4605 ns/op            1023 B/op        109 allocs/op
+BenchmarkClientInit/main_client-24                            55          21337062 ns/op        31011069 B/op        829 allocs/op
+BenchmarkClientInit/mock_client-24                        109257             11199 ns/op           43152 B/op         19 allocs/op
 PASS
-ok      github.com/albertyw/localtimezone/v3    7.312s
+ok      github.com/albertyw/localtimezone/v3    6.038s
 ```
 
-Lookups take ~6-30 microseconds depending on location complexity; client initialization takes ~14ms.
+Lookups take ~1 microsecond; client initialization takes ~18ms.
 
 ## Limitations
 
-- Shapefile uses simplified geometries (Visvalingam simplification with ~89m threshold) that may have reduced accuracy near borders
+- H3 hexagonal discretization (resolution 7, ~5.16 km² per cell) may have reduced accuracy near timezone borders
 - Points in international waters or disputed territories return the nearest timezone
 
 ## Updating data
@@ -88,4 +85,4 @@ The data comes from [timezone-boundary-builder](https://github.com/evansiroky/ti
 
 The code used to lookup the timezone for a location is licensed under the [MIT License](https://opensource.org/licenses/MIT).
 
-The data in timezone shapefile is licensed under the [Open Data Commons Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/).
+The timezone boundary data is licensed under the [Open Data Commons Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/).
