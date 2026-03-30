@@ -64,7 +64,6 @@ func TestData(t *testing.T) {
 		t.Errorf("cannot get test data: %v", err)
 	}
 	for _, tc := range data {
-		tc := tc // Remove race condition over test fields
 		t.Run(tc.City, func(t *testing.T) {
 			t.Parallel()
 			point := Point{

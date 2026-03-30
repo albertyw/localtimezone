@@ -130,7 +130,7 @@ func (z *localTimeZone) loadH3(r io.Reader) error {
 
 	// Read string table
 	tzNames := make([]string, stringCount)
-	for i := uint16(0); i < stringCount; i++ {
+	for i := range stringCount {
 		if off+2 > len(data) {
 			return fmt.Errorf("unexpected end of data reading string table")
 		}
