@@ -27,7 +27,6 @@ import (
 	"sync/atomic"
 
 	"github.com/klauspost/compress/s2"
-	"github.com/paulmach/orb"
 	"github.com/uber/h3-go/v4"
 )
 
@@ -283,17 +282,17 @@ func (z *localTimeZone) getClosestZone(cell h3.Cell, cache *immutableCache) ([]s
 	}
 	// Final fallback: nautical zone
 	latLng, _ := cell.LatLng()
-	return getNauticalZone(orb.Point{latLng.Lng, latLng.Lat})
+	return getNauticalZone(latLng)
 }
 
-func getNauticalZone(point orb.Point) (tzids []string, err error) {
-	z := point[0] / 7.5
+func getNauticalZone(point h3.LatLng) (tzids []string, err error) {
+	z := point.Lng / 7.5
 	z = (math.Abs(z) + 1) / 2
 	z = math.Floor(z)
 	if z == 0 {
 		return append(tzids, "Etc/GMT"), nil
 	}
-	if point[0] < 0 {
+	if point.Lng < 0 {
 		return append(tzids, fmt.Sprintf("Etc/GMT+%.f", z)), nil
 	}
 	return append(tzids, fmt.Sprintf("Etc/GMT-%.f", z)), nil

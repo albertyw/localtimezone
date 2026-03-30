@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/klauspost/compress/s2"
-	"github.com/paulmach/orb"
+	"github.com/uber/h3-go/v4"
 	"go.uber.org/goleak"
 )
 
@@ -320,7 +320,7 @@ func TestNautical(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(fmt.Sprintf("%f %s", tc.lon, tc.zone), func(t *testing.T) {
 			t.Parallel()
-			z, _ := getNauticalZone(orb.Point{tc.lon, 0})
+			z, _ := getNauticalZone(h3.NewLatLng(0, tc.lon))
 			if z[0] != tc.zone {
 				t.Errorf("expected %s got %s", tc.zone, z[0])
 			}
