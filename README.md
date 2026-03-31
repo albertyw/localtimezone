@@ -54,16 +54,16 @@ goos: linux
 goarch: amd64
 pkg: github.com/albertyw/localtimezone/v3
 cpu: AMD Ryzen 9 7900X 12-Core Processor
-BenchmarkGetZone/GetZone_on_large_cities-24              1000000              1071 ns/op             112 B/op         11 allocs/op
-BenchmarkGetZone/GetOneZone_on_large_cities-24           1273423               940.3 ns/op            90 B/op          8 allocs/op
-BenchmarkZones/test_cases-24                              239356              4605 ns/op            1023 B/op        109 allocs/op
-BenchmarkClientInit/main_client-24                            55          21337062 ns/op        31011069 B/op        829 allocs/op
-BenchmarkClientInit/mock_client-24                        109257             11199 ns/op           43152 B/op         19 allocs/op
+BenchmarkGetZone/GetZone_on_large_cities-24              1000000              1070 ns/op             112 B/op         11 allocs/op
+BenchmarkGetZone/GetOneZone_on_large_cities-24           1271371               944.1 ns/op            90 B/op          8 allocs/op
+BenchmarkZones/test_cases-24                              239992              4677 ns/op            1023 B/op        109 allocs/op
+BenchmarkClientInit/main_client-24                           140           8125243 ns/op        33037821 B/op        458 allocs/op
+BenchmarkClientInit/mock_client-24                         10000            165900 ns/op         1063803 B/op         15 allocs/op
 PASS
-ok      github.com/albertyw/localtimezone/v3    6.038s
+ok      github.com/albertyw/localtimezone/v3    6.328s
 ```
 
-Lookups take ~1 microsecond; client initialization takes ~18ms.
+Lookups take ~1 microsecond; client initialization takes ~8ms.
 
 ## Limitations
 
