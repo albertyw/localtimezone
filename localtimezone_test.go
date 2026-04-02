@@ -387,6 +387,72 @@ func TestLoadH3Malformed(t *testing.T) {
 	}
 }
 
+func TestContainsString(t *testing.T) {
+	t.Parallel()
+	tt := []struct {
+		name     string
+		s        []string
+		v        string
+		expected bool
+	}{
+		{"empty slice", []string{}, "foo", false},
+		{"found at start", []string{"foo", "bar"}, "foo", true},
+		{"found at end", []string{"foo", "bar"}, "bar", true},
+		{"not found", []string{"foo", "bar"}, "baz", false},
+	}
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := containsString(tc.s, tc.v)
+			if got != tc.expected {
+				t.Errorf("containsString(%v, %q) = %v; want %v", tc.s, tc.v, got, tc.expected)
+			}
+		})
+	}
+}
+
+func TestGetZoneDeduplicatesZones(t *testing.T) {
+	t.Parallel()
+	// Build a synthetic cache where both a cell and its parent cell map to the same
+	// timezone, verifying that getZone does not return duplicate zone entries.
+	latLng := h3.NewLatLng(35.6828387, 139.7594549) // Tokyo
+	resolution := 2
+	cell, err := h3.LatLngToCell(latLng, resolution)
+	if err != nil {
+		t.Fatalf("cannot create H3 cell: %v", err)
+	}
+	parentCell, err := cell.Parent(resolution - 1)
+	if err != nil {
+		t.Fatalf("cannot get parent H3 cell: %v", err)
+	}
+
+	// Sort cell values for binary search in findCell
+	c0, c1 := int64(cell), int64(parentCell)
+	if c0 > c1 {
+		c0, c1 = c1, c0
+	}
+	cache := &immutableCache{
+		tzNames:    []string{"Asia/Tokyo"},
+		cells:      []int64{c0, c1},
+		tzIdx:      []uint16{0, 0},
+		resolution: resolution,
+	}
+
+	z := &localTimeZone{}
+	z.data.Store(cache)
+
+	zones, err := z.getZone(Point{Lon: 139.7594549, Lat: 35.6828387}, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(zones) != 1 {
+		t.Errorf("expected 1 zone (no duplicates); got %d: %v", len(zones), zones)
+	}
+	if zones[0] != "Asia/Tokyo" {
+		t.Errorf("expected Asia/Tokyo; got %s", zones[0])
+	}
+}
+
 func TestLoadOverwrite(t *testing.T) {
 	client, err := NewLocalTimeZone()
 	if err != nil {
