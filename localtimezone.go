@@ -16,12 +16,10 @@
 package localtimezone
 
 import (
-	"bytes"
 	_ "embed"
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
 	"math"
 	"sort"
 	"sync/atomic"
@@ -102,8 +100,7 @@ func NewMockLocalTimeZone() LocalTimeZone {
 }
 
 func (z *localTimeZone) load(dataCompressed []byte) error {
-	r := s2.NewReader(bytes.NewReader(dataCompressed))
-	data, err := io.ReadAll(r)
+	data, err := s2.Decode(nil, dataCompressed)
 	if err != nil {
 		return err
 	}
