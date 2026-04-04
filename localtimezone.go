@@ -101,11 +101,8 @@ func NewMockLocalTimeZone() LocalTimeZone {
 	return &z
 }
 
-func (z *localTimeZone) load(data []byte) error {
-	return z.loadH3(s2.NewReader(bytes.NewReader(data)))
-}
-
-func (z *localTimeZone) loadH3(r io.Reader) error {
+func (z *localTimeZone) load(dataCompressed []byte) error {
+	r := s2.NewReader(bytes.NewReader(dataCompressed))
 	data, err := io.ReadAll(r)
 	if err != nil {
 		return err
