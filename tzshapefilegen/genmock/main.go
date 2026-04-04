@@ -61,19 +61,12 @@ func main() {
 	}
 	buf.Write(entryBuf)
 
-	// S2 compress
-	var compressed bytes.Buffer
-	w := s2.NewWriter(&compressed, s2.WriterBestCompression())
-	if _, err := w.Write(buf.Bytes()); err != nil {
-		log.Fatalf("s2 write: %v", err)
-	}
-	if err := w.Close(); err != nil {
-		log.Fatalf("s2 close: %v", err)
-	}
+	// S2 compress (block format)
+	compressed := s2.EncodeBest(nil, buf.Bytes())
 
-	err = os.WriteFile("data_mock.h3.s2", compressed.Bytes(), 0644)
+	err = os.WriteFile("data_mock.h3.s2", compressed, 0644)
 	if err != nil {
 		log.Fatalf("write file: %v", err)
 	}
-	fmt.Printf("Wrote data_mock.h3.s2 (%d bytes)\n", compressed.Len())
+	fmt.Printf("Wrote data_mock.h3.s2 (%d bytes)\n", len(compressed))
 }

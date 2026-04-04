@@ -315,15 +315,7 @@ func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 }
 
 func generateData(data []byte) ([]byte, error) {
-	var buffer bytes.Buffer
-	w := s2.NewWriter(&buffer, s2.WriterBestCompression())
-	if _, err := w.Write(data); err != nil {
-		return nil, fmt.Errorf("could not compress data: %w", err)
-	}
-	if err := w.Close(); err != nil {
-		return nil, fmt.Errorf("could not flush/close s2 writer: %w", err)
-	}
-	return buffer.Bytes(), nil
+	return s2.EncodeBest(nil, data), nil
 }
 
 func writeData(content []byte) error {
