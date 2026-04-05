@@ -101,6 +101,28 @@ make benchmark
 
 The data comes from [timezone-boundary-builder](https://github.com/evansiroky/timezone-boundary-builder). Check the releases page for the latest version.
 
+## Architecture
+
+At build time, timezone polygon boundaries from timezone-boundary-builder are converted to [H3](https://h3geo.org/) hexagonal cells at resolution 7 (~5.16 km² per cell). Cells covering a uniform timezone region are compacted into coarser-resolution parent cells, shrinking the dataset significantly. The result is serialized into a custom binary format (`H3TZ`), compressed with [S2](https://github.com/klauspost/compress), and embedded directly into the Go binary via `//go:embed`.
+
+At runtime, a lookup converts the input coordinates to an H3 cell ID, then binary-searches a sorted array of cell→timezone entries. If the exact cell is absent (due to compaction), the search walks up the H3 hierarchy to coarser resolutions. Points in international waters fall back to an expanding ring search over neighboring cells, then to a nautical zone derived from longitude.
+
+```
+Build time:
+  GeoJSON polygons
+    └─► H3 PolygonToCells (resolution 7)
+          └─► CompactCells
+                └─► H3TZ binary → S2 compress → //go:embed
+
+Runtime (GetZone):
+  (lat, lon)
+    └─► H3 cell ID
+          └─► binary search sorted cells[]
+                └─► walk parent resolutions (compaction)
+                      └─► GridDisk neighbor fallback
+                            └─► nautical zone fallback
+```
+
 ## Licenses
 
 The code used to lookup the timezone for a location is licensed under the [MIT License](https://opensource.org/licenses/MIT).
