@@ -22,10 +22,7 @@ go get github.com/albertyw/localtimezone/v3
 import localtimezone "github.com/albertyw/localtimezone/v3"
 
 // Loading Zone for Line Islands, Kiritimati
-tz, err := localtimezone.NewLocalTimeZone()
-if err != nil {
-    panic(err)
-}
+tz := localtimezone.NewLocalTimeZone()
 zone, err := tz.GetZone(localtimezone.Point{
     Lon: -157.21328, Lat: 1.74294,
 })
