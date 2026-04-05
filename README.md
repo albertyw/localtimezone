@@ -61,6 +61,11 @@ Uses timezone boundary data from [timezone-boundary-builder](https://github.com/
 - Thread-safe for concurrent lookups
 - Lookups are purely in-memory. Uses ~17MB of RAM.
 
+### Limitations
+
+- H3 hexagonal discretization (resolution 7, ~5.16 km² per cell) may have reduced accuracy near timezone borders
+- Points in international waters or disputed territories return the nearest timezone
+
 ### Benchmarks
 
 ```
@@ -80,17 +85,18 @@ ok      github.com/albertyw/localtimezone/v3    5.662s
 
 Lookups take ~1 microsecond; client initialization takes ~5ms.
 
-## Limitations
-
-- H3 hexagonal discretization (resolution 7, ~5.16 km² per cell) may have reduced accuracy near timezone borders
-- Points in international waters or disputed territories return the nearest timezone
-
-## Updating data
-
-To update to the latest timezone data:
+## Development
 
 ```bash
+# To update to the latest timezone data
 make generate
+
+# To run tests
+make test
+make race
+
+# To run benchmarks
+make benchmark
 ```
 
 The data comes from [timezone-boundary-builder](https://github.com/evansiroky/timezone-boundary-builder). Check the releases page for the latest version.
