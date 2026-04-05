@@ -18,18 +18,36 @@ go get github.com/albertyw/localtimezone/v3
 
 ## Usage / Example
 
+See [example_test.go](https://github.com/albertyw/localtimezone/blob/master/example_test.go) for more examples.
+
 ```go
 import localtimezone "github.com/albertyw/localtimezone/v3"
 
-// Loading Zone for Line Islands, Kiritimati
 tz := localtimezone.NewLocalTimeZone()
-zone, err := tz.GetZone(localtimezone.Point{
-    Lon: -157.21328, Lat: 1.74294,
+
+// For most use cases, use GetOneZone to get any timezone for a location
+zone, err := tz.GetOneZone(localtimezone.Point{
+    Lon: -122.4194, Lat: 37.7749,
 })
 if err != nil {
     panic(err)
 }
-fmt.Println(zone[0])
+fmt.Println(zone)
+// Output: America/Los_Angeles
+
+// Some timezones overlap and may return multiple zones
+zone, err := tz.GetZone(localtimezone.Point{
+    Lon: -132.783555, Lat: 54.554439,
+})
+if err != nil {
+    panic(err)
+}
+for _, zone:= range zones {
+    fmt.Println(zone)
+}
+// Output:
+// America/Sitka
+// America/Vancouver
 ```
 
 Note: `GetZone()` may return an error only for out-of-range coordinates; it returns the nearest timezone for all valid locations.
