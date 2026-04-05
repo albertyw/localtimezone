@@ -8,14 +8,46 @@ import (
 
 func ExampleLocalTimeZone_GetZone() {
 	z := localtimezone.NewLocalTimeZone()
-	// Loading Zone for Line Islands, Kiritimati
+	// Loading zones for the Alaska panhandle (overlaps America/Sitka and America/Vancouver)
 	p := localtimezone.Point{
-		Lon: -157.21328, Lat: 1.74294,
+		Lon: -132.783555, Lat: 54.554439,
 	}
-	zone, err := z.GetZone(p)
+	zones, err := z.GetZone(p)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(zone[0])
-	// Output: Pacific/Kiritimati
+	for _, zone := range zones {
+		fmt.Println(zone)
+	}
+	// Output:
+	// America/Sitka
+	// America/Vancouver
+}
+
+func ExampleLocalTimeZone_GetOneZone_sanFrancisco() {
+	z := localtimezone.NewLocalTimeZone()
+	// Loading zone for San Francisco, CA
+	p := localtimezone.Point{
+		Lon: -122.4194, Lat: 37.7749,
+	}
+	zone, err := z.GetOneZone(p)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(zone)
+	// Output: America/Los_Angeles
+}
+
+func ExampleLocalTimeZone_GetOneZone_alaskaPanhandle() {
+	z := localtimezone.NewLocalTimeZone()
+	// Loading zone for the Alaska panhandle (overlaps America/Sitka and America/Vancouver)
+	p := localtimezone.Point{
+		Lon: -132.783555, Lat: 54.554439,
+	}
+	zone, err := z.GetOneZone(p)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(zone)
+	// Output: America/Sitka
 }
