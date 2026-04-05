@@ -55,10 +55,7 @@ func generateTestCases() ([]timezoneTestCase, error) {
 
 func TestData(t *testing.T) {
 	t.Parallel()
-	z, err := NewLocalTimeZone()
-	if err != nil {
-		t.Errorf("cannot initialize timezone client: %v", err)
-	}
+	z := NewLocalTimeZone()
 	data, err := generateTestCases()
 	if err != nil {
 		t.Errorf("cannot get test data: %v", err)
@@ -92,10 +89,7 @@ func TestData(t *testing.T) {
 }
 
 func TestTzNamesPresent(t *testing.T) {
-	client, err := NewLocalTimeZone()
-	if err != nil {
-		t.Errorf("cannot initialize timezone client: %v", err)
-	}
+	client := NewLocalTimeZone()
 	z, ok := client.(*localTimeZone)
 	if !ok {
 		t.Error("error when initializing client")
@@ -112,10 +106,7 @@ func TestTzNamesPresent(t *testing.T) {
 }
 
 func TestCellsPresent(t *testing.T) {
-	client, err := NewLocalTimeZone()
-	if err != nil {
-		t.Errorf("cannot initialize timezone client: %v", err)
-	}
+	client := NewLocalTimeZone()
 	z, ok := client.(*localTimeZone)
 	if !ok {
 		t.Error("error when initializing client")
@@ -137,10 +128,7 @@ func TestCellsPresent(t *testing.T) {
 }
 
 func BenchmarkGetZone(b *testing.B) {
-	client, err := NewLocalTimeZone()
-	if err != nil {
-		b.Errorf("cannot initialize timezone client: %v", err)
-	}
+	client := NewLocalTimeZone()
 	data, err := generateTestCases()
 	if err != nil {
 		b.Errorf("cannot initialize test cases: %v", err)

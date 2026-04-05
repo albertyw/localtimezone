@@ -78,12 +78,17 @@ type localTimeZone struct {
 
 var _ LocalTimeZone = &localTimeZone{}
 
-// NewLocalTimeZone creates a new LocalTimeZone with real timezone data
-// The client is threadsafe
-func NewLocalTimeZone() (LocalTimeZone, error) {
+// NewLocalTimeZone creates a new LocalTimeZone with real timezone data.
+// The client is threadsafe.
+// Init is deterministic: TZData is a fixed embedded binary, so every call
+// produces an equivalent client.
+func NewLocalTimeZone() LocalTimeZone {
 	z := localTimeZone{}
-	err := z.load(TZData)
-	return &z, err
+	if err := z.load(TZData); err != nil {
+		// Unreachable: TZData is embedded at compile time and always valid.
+		panic(err)
+	}
+	return &z
 }
 
 // NewMockLocalTimeZone creates a new LocalTimeZone that always returns

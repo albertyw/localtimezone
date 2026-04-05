@@ -7,10 +7,7 @@ import (
 )
 
 func ExampleLocalTimeZone_GetZone() {
-	z, err := localtimezone.NewLocalTimeZone()
-	if err != nil {
-		panic(err)
-	}
+	z := localtimezone.NewLocalTimeZone()
 	// Loading Zone for Line Islands, Kiritimati
 	p := localtimezone.Point{
 		Lon: -157.21328, Lat: 1.74294,

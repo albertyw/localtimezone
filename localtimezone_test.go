@@ -16,33 +16,39 @@ func TestMain(m *testing.M) {
 	goleak.VerifyTestMain(m)
 }
 
+func TestNewLocalTimeZonePanic(t *testing.T) {
+	tempTZData := TZData
+	TZData = []byte("asdf")
+	defer func() {
+		TZData = tempTZData
+		if r := recover(); r == nil {
+			t.Errorf("expected a panic; got no panic")
+		}
+	}()
+	NewLocalTimeZone()
+}
+
 func TestLoadError(t *testing.T) {
-	client, err := NewLocalTimeZone()
-	if err != nil {
-		t.Errorf("error when initializing client: %v", err)
-	}
+	client := NewLocalTimeZone()
 	c, ok := client.(*localTimeZone)
 	if !ok {
 		t.Errorf("error when initializing client")
 	}
 
 	badData := []byte("asdf")
-	err = c.load(badData)
-	if err == nil {
+	if err := c.load(badData); err == nil {
 		t.Errorf("expected error when loading malformed data")
 	}
 
 	var badData2 bytes.Buffer
 	writer := s2.NewWriter(&badData2)
-	_, err = writer.Write([]byte("asdf"))
-	if err != nil {
+	if _, err := writer.Write([]byte("asdf")); err != nil {
 		t.Errorf("cannot write to s2, got error %v", err)
 	}
-	if err = writer.Close(); err != nil {
+	if err := writer.Close(); err != nil {
 		t.Errorf("cannot close s2 writer, got error %v", err)
 	}
-	err = c.load(badData2.Bytes())
-	if err == nil {
+	if err := c.load(badData2.Bytes()); err == nil {
 		t.Errorf("expected error when loading malformed data")
 	}
 }
@@ -54,10 +60,7 @@ func TestParallelNewLocalTimeZone(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, err := NewLocalTimeZone()
-			if err != nil {
-				t.Errorf("error when initializing client: %v", err)
-			}
+			NewLocalTimeZone()
 		}()
 	}
 	wg.Wait()
@@ -157,10 +160,7 @@ var _tt = []struct {
 
 func TestGetZone(t *testing.T) {
 	t.Parallel()
-	z, err := NewLocalTimeZone()
-	if err != nil {
-		t.Errorf("cannot initialize timezone client: %v", err)
-	}
+	z := NewLocalTimeZone()
 	for _, tc := range _tt {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -185,10 +185,7 @@ func TestGetZone(t *testing.T) {
 
 func TestGetOneZone(t *testing.T) {
 	t.Parallel()
-	z, err := NewLocalTimeZone()
-	if err != nil {
-		t.Errorf("cannot initialize timezone client: %v", err)
-	}
+	z := NewLocalTimeZone()
 	for _, tc := range _tt {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -244,14 +241,10 @@ func TestMockLocalTimeZonePanic(t *testing.T) {
 }
 
 func BenchmarkZones(b *testing.B) {
-	z, err := NewLocalTimeZone()
-	if err != nil {
-		b.Errorf("cannot initialize timezone client: %v", err)
-	}
+	z := NewLocalTimeZone()
 
 	// Ensure client has finished loading data
-	_, err = z.GetZone(Point{0, 0})
-	if err != nil {
+	if _, err := z.GetZone(Point{0, 0}); err != nil {
 		b.Errorf("cannot initialize timezone client: %v", err)
 	}
 
@@ -278,10 +271,7 @@ func BenchmarkZones(b *testing.B) {
 func BenchmarkClientInit(b *testing.B) {
 	b.Run("main client", func(b *testing.B) {
 		for b.Loop() {
-			c, err := NewLocalTimeZone()
-			if err != nil {
-				b.Errorf("client could not initialize because of %v", err)
-			}
+			c := NewLocalTimeZone()
 			_, ok := c.(*localTimeZone)
 			if !ok {
 				b.Errorf("cannot initialize timezone client")
@@ -330,10 +320,7 @@ func TestNautical(t *testing.T) {
 
 func TestOutOfRange(t *testing.T) {
 	t.Parallel()
-	z, err := NewLocalTimeZone()
-	if err != nil {
-		t.Errorf("cannot initialize timezone client: %v", err)
-	}
+	z := NewLocalTimeZone()
 	tt := []struct {
 		p   Point
 		err error
@@ -454,18 +441,14 @@ func TestGetZoneDeduplicatesZones(t *testing.T) {
 }
 
 func TestLoadOverwrite(t *testing.T) {
-	client, err := NewLocalTimeZone()
-	if err != nil {
-		t.Errorf("cannot initialize client, got %v", err)
-	}
+	client := NewLocalTimeZone()
 	c, ok := client.(*localTimeZone)
 	if !ok {
 		t.Errorf("cannot initialize client")
 	}
 	lenCells := len(c.data.Load().cells)
 
-	err = c.load(MockTZData)
-	if err != nil {
+	if err := c.load(MockTZData); err != nil {
 		t.Errorf("cannot switch client to mock data, got %v", err)
 	}
 	if len(c.data.Load().cells) >= lenCells {
