@@ -1,8 +1,8 @@
 # github.com/albertyw/localtimezone
 
 [![Build Status](https://drone.albertyw.com/api/badges/albertyw/localtimezone/status.svg)](https://drone.albertyw.com/albertyw/localtimezone)
-[![Go Reference](https://pkg.go.dev/badge/github.com/albertyw/localtimezone/v3.svg)](https://pkg.go.dev/github.com/albertyw/localtimezone/v3)
-[![Go Report Card](https://goreportcard.com/badge/github.com/albertyw/localtimezone/v3)](https://goreportcard.com/report/github.com/albertyw/localtimezone/v3)
+[![Go Reference](https://pkg.go.dev/badge/github.com/albertyw/localtimezone/v4.svg)](https://pkg.go.dev/github.com/albertyw/localtimezone/v4)
+[![Go Report Card](https://goreportcard.com/badge/github.com/albertyw/localtimezone/v4)](https://goreportcard.com/report/github.com/albertyw/localtimezone/v4)
 [![Maintainability](https://qlty.sh/gh/albertyw/projects/localtimezone/maintainability.svg)](https://qlty.sh/gh/albertyw/projects/localtimezone)
 [![Code Coverage](https://qlty.sh/gh/albertyw/projects/localtimezone/coverage.svg)](https://qlty.sh/gh/albertyw/projects/localtimezone)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -13,7 +13,7 @@ Based on [github.com/ugjka/go-tz](https://github.com/ugjka/go-tz).
 ## Installation
 
 ```bash
-go get github.com/albertyw/localtimezone/v3
+go get github.com/albertyw/localtimezone/v4
 ```
 
 ## Usage / Example
@@ -21,7 +21,7 @@ go get github.com/albertyw/localtimezone/v3
 See [example_test.go](https://github.com/albertyw/localtimezone/blob/master/example_test.go) for more examples.
 
 ```go
-import localtimezone "github.com/albertyw/localtimezone/v3"
+import localtimezone "github.com/albertyw/localtimezone/v4"
 
 tz := localtimezone.NewLocalTimeZone()
 
@@ -72,7 +72,7 @@ Uses timezone boundary data from [timezone-boundary-builder](https://github.com/
 go test -bench=. -benchmem
 goos: linux
 goarch: amd64
-pkg: github.com/albertyw/localtimezone/v3
+pkg: github.com/albertyw/localtimezone/v4
 cpu: AMD Ryzen 9 7900X 12-Core Processor
 BenchmarkGetZone/GetZone_on_large_cities-24               989595              1205 ns/op             116 B/op         11 allocs/op
 BenchmarkGetZone/GetOneZone_on_large_cities-24           1000000              1006 ns/op              86 B/op          7 allocs/op
@@ -80,7 +80,7 @@ BenchmarkZones/test_cases-24                              237181              45
 BenchmarkClientInit/main_client-24                           247           4772720 ns/op        17947054 B/op        425 allocs/op
 BenchmarkClientInit/mock_client-24                        735993              1458 ns/op            2688 B/op          7 allocs/op
 PASS
-ok      github.com/albertyw/localtimezone/v3    5.662s
+ok      github.com/albertyw/localtimezone/v4    5.662s
 ```
 
 Lookups take ~1 microsecond; client initialization takes ~5ms.

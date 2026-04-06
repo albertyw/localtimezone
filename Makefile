@@ -39,7 +39,7 @@ unit:
 .PHONY:cover
 cover: test
 	go tool cover -func=c.out
-	sed -i 's/github.com\/albertyw\/localtimezone\/v3\///g' c.out
+	sed -i 's/github.com\/albertyw\/localtimezone\/v4\///g' c.out
 	sed -i '/tzshapefilegen/d' c.out
 
 .PHONY:race

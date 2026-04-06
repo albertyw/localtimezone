@@ -1,6 +1,21 @@
 CHANGELOG
 =========
 
+v4.0.0 (2026-03-29)
+-------------------
+
+This library is now imported as `github.com/albertyw/localtimezone/v4`
+
+ - **Breaking** - Remove `LoadGeoJSON` method from `LocalTimeZone` interface
+ - **Breaking** - Remove the `error` return value from `NewLocalTimeZone`.
+ - **Breaking** - Convert `TZData` and `MockTZData` from wkb.gz (gzip-compressed WKB) to h3.s2 (s2-compressed H3)
+ - Convert from gzip to s2 (Snappy) compression (~3x decompression speed)
+ - Convert from WKB polygon to H3 hexagon grid for timezone lookup (~30x timezone lookup speed)
+ - Fix `GetZone` returning duplicate zones
+ - Move `tzshapefilegen` to a separate Go module to isolate `orb` dependency from consumers
+ - Pruned many dependencies
+
+
 v3.2.0 (2026-03-14)
 -------------------
 

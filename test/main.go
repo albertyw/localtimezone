@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	localtimezone "github.com/albertyw/localtimezone/v3"
+	localtimezone "github.com/albertyw/localtimezone/v4"
 )
 
 func main() {
