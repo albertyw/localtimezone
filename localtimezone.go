@@ -6,7 +6,7 @@
 //
 // * Supports overlapping zones
 //
-// * Sub millisecond lookup even on old hardware
+// * Microsecond-level lookup even on old hardware
 //
 // # Problems
 //
