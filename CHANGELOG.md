@@ -16,6 +16,13 @@ This library is now imported as `github.com/albertyw/localtimezone/v4`
  - Pruned many dependencies
 
 
+v3.2.1 (2026-04-29)
+-------------------
+
+ - Update to tzdata 2026b
+ - Update dependencies
+
+
 v3.2.0 (2026-03-14)
 -------------------
 
