@@ -149,7 +149,7 @@ func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 		if tzid == "" {
 			break
 		}
-		geometry := simplify.Visvalingam(0.0008, 4).Simplify(feature.Geometry)
+		geometry := simplify.Visvalingam(0.0004, 4).Simplify(feature.Geometry)
 		wkbBytes, err := wkb.Marshal(geometry)
 		if err != nil {
 			log.Printf("Error: could not marshal WKB for %s: %v\n", tzid, err)
