@@ -9,6 +9,6 @@ require (
 	github.com/uber/h3-go/v4 v4.4.1
 )
 
-require go.mongodb.org/mongo-driver v1.11.4 // indirect
+require go.mongodb.org/mongo-driver v1.17.7 // indirect
 
 replace github.com/albertyw/localtimezone/v4 => ../
