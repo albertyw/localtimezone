@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+v3.2.2 (2026-07-11)
+-------------------
+
+ - Update to tzdata 2026c
+ - Update dependencies
+ - Fix CI
+
+
 v3.2.1 (2026-04-29)
 -------------------
 
