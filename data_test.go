@@ -5,6 +5,9 @@ import (
 	"os"
 	"strconv"
 	"testing"
+	"time"
+
+	"github.com/uber/h3-go/v4"
 )
 
 // city and lat/lon data is from Pareto Software LLC, SimpleMaps.com
@@ -101,6 +104,36 @@ func TestTzNamesPresent(t *testing.T) {
 	for _, name := range cache.tzNames {
 		if name == "" {
 			t.Error("unexpected empty timezone name")
+		}
+	}
+}
+
+func TestZonesValidLoadLocation(t *testing.T) {
+	t.Parallel()
+	client := NewLocalTimeZone()
+	z, ok := client.(*localTimeZone)
+	if !ok {
+		t.Error("error when initializing client")
+	}
+
+	// Every timezone name embedded in the data must be loadable by time.LoadLocation.
+	for _, name := range z.data.Load().tzNames {
+		if _, err := time.LoadLocation(name); err != nil {
+			t.Errorf("timezone %q is not valid for time.LoadLocation: %v", name, err)
+		}
+	}
+
+	// The nautical fallback zones are generated at lookup time rather than stored
+	// in the data, so verify they are loadable across the full longitude range too.
+	for lon := -180.0; lon <= 180.0; lon += 7.5 {
+		zones, err := getNauticalZone(h3.NewLatLng(0, lon))
+		if err != nil {
+			t.Fatalf("cannot get nautical zone for lon %f: %v", lon, err)
+		}
+		for _, name := range zones {
+			if _, err := time.LoadLocation(name); err != nil {
+				t.Errorf("nautical timezone %q is not valid for time.LoadLocation: %v", name, err)
+			}
 		}
 	}
 }
