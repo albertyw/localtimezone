@@ -16,12 +16,13 @@ import (
 
 const h3Resolution = 7
 
-func main() {
+// buildMockData builds the compressed mock H3 dataset.
+func buildMockData() ([]byte, error) {
 	// Use all 122 resolution-0 base cells so every point on Earth
 	// resolves to "America/Los_Angeles" via parent hierarchy lookup.
 	cells, err := h3.Res0Cells()
 	if err != nil {
-		log.Fatalf("Res0Cells: %v", err)
+		return nil, fmt.Errorf("Res0Cells: %w", err)
 	}
 	fmt.Printf("Using %d resolution-0 base cells for mock data\n", len(cells))
 
@@ -62,11 +63,23 @@ func main() {
 	buf.Write(entryBuf)
 
 	// S2 compress (block format)
-	compressed := s2.EncodeBest(nil, buf.Bytes())
+	return s2.EncodeBest(nil, buf.Bytes()), nil
+}
 
-	err = os.WriteFile("data_mock.h3.s2", compressed, 0644)
+func run() error {
+	compressed, err := buildMockData()
 	if err != nil {
-		log.Fatalf("write file: %v", err)
+		return err
+	}
+	if err := os.WriteFile("data_mock.h3.s2", compressed, 0644); err != nil {
+		return fmt.Errorf("write file: %w", err)
 	}
 	fmt.Printf("Wrote data_mock.h3.s2 (%d bytes)\n", len(compressed))
+	return nil
+}
+
+func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
 }
