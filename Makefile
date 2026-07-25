@@ -34,12 +34,13 @@ lint:
 .PHONY:unit
 unit:
 	go test -coverprofile=c.out -covermode=atomic ./...
-	cd tzshapefilegen && go test ./...
+	cd tzshapefilegen && go test -coverprofile=c.out -covermode=atomic ./...
 
 .PHONY:cover
 cover: test
 	go tool cover -func=c.out
 	sed -i 's/github.com\/albertyw\/localtimezone\/v4\///g' c.out
+	cd tzshapefilegen && go tool cover -func=c.out
 
 .PHONY:race
 race:
