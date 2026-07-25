@@ -67,6 +67,9 @@ func getMostCurrentRelease() (version string, url string, err error) {
 	if err != nil {
 		return "", "", err
 	}
+	if len(response) == 0 {
+		return "", "", fmt.Errorf("no timezone releases found")
+	}
 
 	version = response[0].Name
 	for _, asset := range response[0].Assets {
@@ -156,7 +159,7 @@ func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 	tzNameSet := make(map[string]bool)
 	var tzidList []string
 	for _, feature := range fc.Features {
-		tzid := feature.Properties.MustString("tzid")
+		tzid := feature.Properties.MustString("tzid", "")
 		if tzid == "" {
 			break
 		}
@@ -179,7 +182,7 @@ func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 	results := make([]featureResult, len(fc.Features))
 	var wg sync.WaitGroup
 	for i, feature := range fc.Features {
-		tzid := feature.Properties.MustString("tzid")
+		tzid := feature.Properties.MustString("tzid", "")
 		if tzid == "" {
 			break
 		}
