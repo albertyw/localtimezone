@@ -374,30 +374,6 @@ func TestLoadH3Malformed(t *testing.T) {
 	}
 }
 
-func TestContainsString(t *testing.T) {
-	t.Parallel()
-	tt := []struct {
-		name     string
-		s        []string
-		v        string
-		expected bool
-	}{
-		{"empty slice", []string{}, "foo", false},
-		{"found at start", []string{"foo", "bar"}, "foo", true},
-		{"found at end", []string{"foo", "bar"}, "bar", true},
-		{"not found", []string{"foo", "bar"}, "baz", false},
-	}
-	for _, tc := range tt {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			got := containsString(tc.s, tc.v)
-			if got != tc.expected {
-				t.Errorf("containsString(%v, %q) = %v; want %v", tc.s, tc.v, got, tc.expected)
-			}
-		})
-	}
-}
-
 func TestGetZoneDeduplicatesZones(t *testing.T) {
 	t.Parallel()
 	// Build a synthetic cache where both a cell and its parent cell map to the same

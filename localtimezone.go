@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 	"sync/atomic"
 
@@ -212,7 +213,7 @@ func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err e
 			if single {
 				return []string{m}, nil
 			}
-			if !containsString(tzids, m) {
+			if !slices.Contains(tzids, m) {
 				tzids = append(tzids, m)
 			}
 		}
@@ -278,15 +279,6 @@ func (z *localTimeZone) getClosestZone(cell h3.Cell, cache *immutableCache) ([]s
 	// Final fallback: nautical zone
 	latLng, _ := cell.LatLng()
 	return getNauticalZone(latLng)
-}
-
-func containsString(s []string, v string) bool {
-	for _, x := range s {
-		if x == v {
-			return true
-		}
-	}
-	return false
 }
 
 func getNauticalZone(point h3.LatLng) (tzids []string, err error) {
