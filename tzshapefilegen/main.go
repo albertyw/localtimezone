@@ -42,6 +42,10 @@ var TZNames = []string{
 const defaultRelease = "default"
 const h3Resolution = 7
 
+// entrySize is the size of one encoded cell entry: 8 bytes for the int64 cell
+// followed by 2 bytes for the uint16 timezone index.
+const entrySize = 10
+
 func getMostCurrentRelease() (version string, url string, err error) {
 	resp, err := http.Get(releasesURL)
 	if err != nil {
@@ -299,9 +303,9 @@ func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 	binary.LittleEndian.PutUint32(countBuf[:], uint32(len(entries)))
 	buf.Write(countBuf[:])
 
-	entryBuf := make([]byte, len(entries)*10)
+	entryBuf := make([]byte, len(entries)*entrySize)
 	for i, e := range entries {
-		base := i * 10
+		base := i * entrySize
 		binary.LittleEndian.PutUint64(entryBuf[base:base+8], uint64(e.cell))
 		binary.LittleEndian.PutUint16(entryBuf[base+8:base+10], e.tzIdx)
 	}

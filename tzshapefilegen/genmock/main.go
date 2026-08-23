@@ -16,6 +16,10 @@ import (
 
 const h3Resolution = 7
 
+// entrySize is the size of one encoded cell entry: 8 bytes for the int64 cell
+// followed by 2 bytes for the uint16 timezone index.
+const entrySize = 10
+
 // buildMockData builds the compressed mock H3 dataset.
 func buildMockData() ([]byte, error) {
 	// Use all 122 resolution-0 base cells so every point on Earth
@@ -54,9 +58,9 @@ func buildMockData() ([]byte, error) {
 	binary.LittleEndian.PutUint32(tmp[:4], uint32(len(cells)))
 	buf.Write(tmp[:4])
 
-	entryBuf := make([]byte, len(cells)*10)
+	entryBuf := make([]byte, len(cells)*entrySize)
 	for i, c := range cells {
-		base := i * 10
+		base := i * entrySize
 		binary.LittleEndian.PutUint64(entryBuf[base:base+8], uint64(c))
 		binary.LittleEndian.PutUint16(entryBuf[base+8:base+10], 0) // index 0 = "America/Los_Angeles"
 	}

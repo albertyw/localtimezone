@@ -243,8 +243,8 @@ func parseH3Data(t *testing.T, data []byte) (names []string, entries int) {
 	}
 	entries = int(binary.LittleEndian.Uint32(data[offset : offset+4]))
 	offset += 4
-	if len(data) != offset+entries*10 {
-		t.Errorf("unexpected data length %d, want %d", len(data), offset+entries*10)
+	if len(data) != offset+entries*entrySize {
+		t.Errorf("unexpected data length %d, want %d", len(data), offset+entries*entrySize)
 	}
 	return names, entries
 }
