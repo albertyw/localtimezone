@@ -83,22 +83,20 @@ var _ LocalTimeZone = &localTimeZone{}
 // Init is deterministic: TZData is a fixed embedded binary, so every call
 // produces an equivalent client.
 func NewLocalTimeZone() LocalTimeZone {
-	z := localTimeZone{}
-	if err := z.load(TZData); err != nil {
-		// Unreachable: TZData is embedded at compile time and always valid.
-		panic(err)
-	}
-	return &z
+	return newLocalTimeZone(TZData)
 }
 
 // NewMockLocalTimeZone creates a new LocalTimeZone that always returns
 // America/Los_Angeles as the timezone
 // The client is threadsafe
 func NewMockLocalTimeZone() LocalTimeZone {
+	return newLocalTimeZone(MockTZData)
+}
+
+func newLocalTimeZone(data []byte) LocalTimeZone {
 	z := localTimeZone{}
-	err := z.load(MockTZData)
-	if err != nil {
-		// The MockTZData is embedded and designed to never panic
+	if err := z.load(data); err != nil {
+		// Unreachable: the data is embedded at compile time and always valid.
 		panic(err)
 	}
 	return &z
