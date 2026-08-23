@@ -206,7 +206,7 @@ func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 		}
 
 		wg.Add(1)
-		go func(idx int, tzid string, polygons []orb.Polygon) {
+		go func() {
 			defer wg.Done()
 			var cells []h3.Cell
 			for _, polygon := range polygons {
@@ -221,9 +221,9 @@ func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 				}
 				cells = append(cells, c...)
 			}
-			results[idx] = featureResult{tzid: tzid, cells: cells}
+			results[i] = featureResult{tzid: tzid, cells: cells}
 			fmt.Printf("  Processed %s (%d cells)\n", tzid, len(cells))
-		}(i, tzid, polygons)
+		}()
 	}
 	wg.Wait()
 
