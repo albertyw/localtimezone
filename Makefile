@@ -13,7 +13,7 @@ clean:
 
 .PHONY:install-test-deps
 install-test-deps:
-	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v2.11.4
+	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v2.13.1
 	go install golang.org/x/vuln/cmd/govulncheck@latest
 
 .PHONY:test
