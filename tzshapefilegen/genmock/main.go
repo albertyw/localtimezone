@@ -34,27 +34,26 @@ func buildMockData() ([]byte, error) {
 	slices.Sort(cells)
 
 	// Build binary format
-	tzName := "America/Los_Angeles"
-	tzNameBytes := []byte(tzName)
-
+	tzNameBytes := []byte("America/Los_Angeles")
+	var u16 [2]byte
+	var u32 [4]byte
 	var buf bytes.Buffer
 
 	// Header
 	buf.Write([]byte("H3TZ"))
 	buf.WriteByte(1) // Version
 	buf.WriteByte(byte(h3Resolution))
-	var tmp [4]byte
-	binary.LittleEndian.PutUint16(tmp[:2], 1) // 1 timezone string
-	buf.Write(tmp[:2])
+	binary.LittleEndian.PutUint16(u16[:], 1) // 1 timezone string
+	buf.Write(u16[:])
 
 	// String table
-	binary.LittleEndian.PutUint16(tmp[:2], uint16(len(tzNameBytes)))
-	buf.Write(tmp[:2])
+	binary.LittleEndian.PutUint16(u16[:], uint16(len(tzNameBytes)))
+	buf.Write(u16[:])
 	buf.Write(tzNameBytes)
 
 	// Cell data: bulk write using direct byte encoding
-	binary.LittleEndian.PutUint32(tmp[:4], uint32(len(cells)))
-	buf.Write(tmp[:4])
+	binary.LittleEndian.PutUint32(u32[:], uint32(len(cells)))
+	buf.Write(u32[:])
 
 	entryBuf := make([]byte, len(cells)*entrySize)
 	for i, c := range cells {
