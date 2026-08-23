@@ -202,21 +202,13 @@ func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err e
 		return nil, err
 	}
 
-	// Check all resolutions from finest to coarsest (for compacted cells)
 	for res := cache.resolution; res >= 0; res-- {
-		var lookup h3.Cell
-		if res == cache.resolution {
-			lookup = cell
-		} else {
-			var err error
-			lookup, err = cell.Parent(res)
-			if err != nil {
-				// Skip this resolution; other resolutions may still match
-				continue
-			}
+		lookup, err := lookupCell(cell, res, cache.resolution)
+		if err != nil {
+			// Skip this resolution; other resolutions may still match
+			continue
 		}
-		matches := z.findCell(lookup, cache)
-		for _, m := range matches {
+		for _, m := range z.findCell(lookup, cache) {
 			if single {
 				return []string{m}, nil
 			}
@@ -230,6 +222,16 @@ func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err e
 	}
 
 	return z.getClosestZone(cell, cache)
+}
+
+// lookupCell returns the cell to search for at resolution res. Cells are
+// stored compacted, so a cell may only be present as one of its ancestors and
+// every resolution from the data's own down to 0 has to be checked.
+func lookupCell(cell h3.Cell, res, resolution int) (h3.Cell, error) {
+	if res == resolution {
+		return cell, nil
+	}
+	return cell.Parent(res)
 }
 
 // findCell returns all timezone names matching a cell via binary search.
@@ -261,21 +263,13 @@ func (z *localTimeZone) getClosestZone(cell h3.Cell, cache *immutableCache) ([]s
 			continue
 		}
 		for _, neighbor := range ring {
-			// Check all resolutions for each neighbor
 			for res := cache.resolution; res >= 0; res-- {
-				var lookup h3.Cell
-				if res == cache.resolution {
-					lookup = neighbor
-				} else {
-					var err error
-					lookup, err = neighbor.Parent(res)
-					if err != nil {
-						// Skip this resolution; other resolutions may still match
-						continue
-					}
+				lookup, err := lookupCell(neighbor, res, cache.resolution)
+				if err != nil {
+					// Skip this resolution; other resolutions may still match
+					continue
 				}
-				matches := z.findCell(lookup, cache)
-				if len(matches) > 0 {
+				if matches := z.findCell(lookup, cache); len(matches) > 0 {
 					return matches[:1], nil
 				}
 			}
