@@ -281,15 +281,17 @@ func (z *localTimeZone) getClosestZone(cell h3.Cell, cache *immutableCache) ([]s
 	return getNauticalZone(latLng)
 }
 
+// getNauticalZone returns the nautical timezone for a point, used when no
+// timezone boundary covers it. Nautical zones are 15 degrees of longitude
+// wide and centered on multiples of 15 degrees.
 func getNauticalZone(point h3.LatLng) (tzids []string, err error) {
-	z := point.Lng / 7.5
-	z = (math.Abs(z) + 1) / 2
-	z = math.Floor(z)
-	if z == 0 {
-		return append(tzids, "Etc/GMT"), nil
+	offset := math.Floor((math.Abs(point.Lng/7.5) + 1) / 2)
+	switch {
+	case offset == 0:
+		return []string{"Etc/GMT"}, nil
+	case point.Lng < 0:
+		return []string{fmt.Sprintf("Etc/GMT+%.f", offset)}, nil
+	default:
+		return []string{fmt.Sprintf("Etc/GMT-%.f", offset)}, nil
 	}
-	if point.Lng < 0 {
-		return append(tzids, fmt.Sprintf("Etc/GMT+%.f", z)), nil
-	}
-	return append(tzids, fmt.Sprintf("Etc/GMT-%.f", z)), nil
 }
