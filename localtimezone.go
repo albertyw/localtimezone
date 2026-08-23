@@ -157,7 +157,7 @@ func (z *localTimeZone) load(dataCompressed []byte) error {
 
 	cells := make([]int64, cellCount)
 	tzIdx := make([]uint16, cellCount)
-	for i := 0; i < int(cellCount); i++ {
+	for i := range int(cellCount) {
 		base := i * entrySize
 		cells[i] = int64(binary.LittleEndian.Uint64(cellData[base : base+8]))
 		tzIdx[i] = binary.LittleEndian.Uint16(cellData[base+8 : base+10])
