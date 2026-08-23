@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"sort"
+	"slices"
 
 	"github.com/klauspost/compress/s2"
 	"github.com/uber/h3-go/v4"
@@ -30,10 +30,8 @@ func buildMockData() ([]byte, error) {
 	}
 	fmt.Printf("Using %d resolution-0 base cells for mock data\n", len(cells))
 
-	// Sort cells
-	sort.Slice(cells, func(i, j int) bool {
-		return cells[i] < cells[j]
-	})
+	// Sort cells for binary search
+	slices.Sort(cells)
 
 	// Build binary format
 	tzName := "America/Los_Angeles"

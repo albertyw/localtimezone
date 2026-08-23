@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -276,18 +277,9 @@ func TestOrbExec(t *testing.T) {
 			t.Errorf("expected %s in timezone names", name)
 		}
 	}
-	if !sortedStrings(tzNames) {
+	if !slices.IsSorted(tzNames) {
 		t.Errorf("expected timezone names to be sorted, got %v", tzNames)
 	}
-}
-
-func sortedStrings(names []string) bool {
-	for i := 1; i < len(names); i++ {
-		if names[i-1] > names[i] {
-			return false
-		}
-	}
-	return true
 }
 
 func TestOrbExecMultiPolygon(t *testing.T) {
