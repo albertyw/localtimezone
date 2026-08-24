@@ -5,6 +5,7 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"cmp"
 	"encoding/binary"
 	"encoding/json"
 	"flag"
@@ -13,7 +14,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"sort"
+	"slices"
 	"sync"
 
 	"github.com/klauspost/compress/s2"
@@ -41,6 +42,10 @@ var TZNames = []string{
 `
 const defaultRelease = "default"
 const h3Resolution = 7
+
+// entrySize is the size of one encoded cell entry: 8 bytes for the int64 cell
+// followed by 2 bytes for the uint16 timezone index.
+const entrySize = 10
 
 func getMostCurrentRelease() (version string, url string, err error) {
 	resp, err := http.Get(releasesURL)
@@ -170,7 +175,7 @@ func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 			tzidList = append(tzidList, tzid)
 		}
 	}
-	sort.Strings(tzidList)
+	slices.Sort(tzidList)
 	tzNameIndex := make(map[string]uint16, len(tzidList))
 	for i, name := range tzidList {
 		tzNameIndex[name] = uint16(i)
@@ -201,7 +206,7 @@ func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 		}
 
 		wg.Add(1)
-		go func(idx int, tzid string, polygons []orb.Polygon) {
+		go func() {
 			defer wg.Done()
 			var cells []h3.Cell
 			for _, polygon := range polygons {
@@ -216,9 +221,9 @@ func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 				}
 				cells = append(cells, c...)
 			}
-			results[idx] = featureResult{tzid: tzid, cells: cells}
+			results[i] = featureResult{tzid: tzid, cells: cells}
 			fmt.Printf("  Processed %s (%d cells)\n", tzid, len(cells))
-		}(i, tzid, polygons)
+		}()
 	}
 	wg.Wait()
 
@@ -267,11 +272,8 @@ func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 		totalBefore, totalAfter, 100.0*(1.0-float64(totalAfter)/float64(totalBefore)))
 
 	// Sort entries by cell value for binary search
-	sort.Slice(entries, func(i, j int) bool {
-		if entries[i].cell == entries[j].cell {
-			return entries[i].tzIdx < entries[j].tzIdx
-		}
-		return entries[i].cell < entries[j].cell
+	slices.SortFunc(entries, func(a, b cellEntry) int {
+		return cmp.Or(cmp.Compare(a.cell, b.cell), cmp.Compare(a.tzIdx, b.tzIdx))
 	})
 
 	// Build binary format
@@ -299,22 +301,20 @@ func orbExec(combinedJSON []byte) ([]byte, []string, error) {
 	binary.LittleEndian.PutUint32(countBuf[:], uint32(len(entries)))
 	buf.Write(countBuf[:])
 
-	entryBuf := make([]byte, len(entries)*10)
+	entryBuf := make([]byte, len(entries)*entrySize)
 	for i, e := range entries {
-		base := i * 10
+		base := i * entrySize
 		binary.LittleEndian.PutUint64(entryBuf[base:base+8], uint64(e.cell))
 		binary.LittleEndian.PutUint16(entryBuf[base+8:base+10], e.tzIdx)
 	}
 	buf.Write(entryBuf)
 
 	// Build full tzNames list including nautical zones
-	allTzNames := make([]string, len(tzidList))
-	copy(allTzNames, tzidList)
-	allTzNames = append(allTzNames, "Etc/GMT")
+	allTzNames := append(slices.Clone(tzidList), "Etc/GMT")
 	for offset := 1; offset <= 12; offset++ {
 		allTzNames = append(allTzNames, fmt.Sprintf("Etc/GMT+%d", offset), fmt.Sprintf("Etc/GMT-%d", offset))
 	}
-	sort.Strings(allTzNames)
+	slices.Sort(allTzNames)
 
 	return buf.Bytes(), allTzNames, nil
 }

@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 	"sync/atomic"
 
@@ -83,22 +84,20 @@ var _ LocalTimeZone = &localTimeZone{}
 // Init is deterministic: TZData is a fixed embedded binary, so every call
 // produces an equivalent client.
 func NewLocalTimeZone() LocalTimeZone {
-	z := localTimeZone{}
-	if err := z.load(TZData); err != nil {
-		// Unreachable: TZData is embedded at compile time and always valid.
-		panic(err)
-	}
-	return &z
+	return newLocalTimeZone(TZData)
 }
 
 // NewMockLocalTimeZone creates a new LocalTimeZone that always returns
 // America/Los_Angeles as the timezone
 // The client is threadsafe
 func NewMockLocalTimeZone() LocalTimeZone {
+	return newLocalTimeZone(MockTZData)
+}
+
+func newLocalTimeZone(data []byte) LocalTimeZone {
 	z := localTimeZone{}
-	err := z.load(MockTZData)
-	if err != nil {
-		// The MockTZData is embedded and designed to never panic
+	if err := z.load(data); err != nil {
+		// Unreachable: the data is embedded at compile time and always valid.
 		panic(err)
 	}
 	return &z
@@ -159,7 +158,7 @@ func (z *localTimeZone) load(dataCompressed []byte) error {
 
 	cells := make([]int64, cellCount)
 	tzIdx := make([]uint16, cellCount)
-	for i := 0; i < int(cellCount); i++ {
+	for i := range int(cellCount) {
 		base := i * entrySize
 		cells[i] = int64(binary.LittleEndian.Uint64(cellData[base : base+8]))
 		tzIdx[i] = binary.LittleEndian.Uint16(cellData[base+8 : base+10])
@@ -204,25 +203,17 @@ func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err e
 		return nil, err
 	}
 
-	// Check all resolutions from finest to coarsest (for compacted cells)
 	for res := cache.resolution; res >= 0; res-- {
-		var lookup h3.Cell
-		if res == cache.resolution {
-			lookup = cell
-		} else {
-			var err error
-			lookup, err = cell.Parent(res)
-			if err != nil {
-				// Skip this resolution; other resolutions may still match
-				continue
-			}
+		lookup, err := lookupCell(cell, res, cache.resolution)
+		if err != nil {
+			// Skip this resolution; other resolutions may still match
+			continue
 		}
-		matches := z.findCell(lookup, cache)
-		for _, m := range matches {
+		for _, m := range z.findCell(lookup, cache) {
 			if single {
 				return []string{m}, nil
 			}
-			if !containsString(tzids, m) {
+			if !slices.Contains(tzids, m) {
 				tzids = append(tzids, m)
 			}
 		}
@@ -232,6 +223,16 @@ func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err e
 	}
 
 	return z.getClosestZone(cell, cache)
+}
+
+// lookupCell returns the cell to search for at resolution res. Cells are
+// stored compacted, so a cell may only be present as one of its ancestors and
+// every resolution from the data's own down to 0 has to be checked.
+func lookupCell(cell h3.Cell, res, resolution int) (h3.Cell, error) {
+	if res == resolution {
+		return cell, nil
+	}
+	return cell.Parent(res)
 }
 
 // findCell returns all timezone names matching a cell via binary search.
@@ -263,21 +264,13 @@ func (z *localTimeZone) getClosestZone(cell h3.Cell, cache *immutableCache) ([]s
 			continue
 		}
 		for _, neighbor := range ring {
-			// Check all resolutions for each neighbor
 			for res := cache.resolution; res >= 0; res-- {
-				var lookup h3.Cell
-				if res == cache.resolution {
-					lookup = neighbor
-				} else {
-					var err error
-					lookup, err = neighbor.Parent(res)
-					if err != nil {
-						// Skip this resolution; other resolutions may still match
-						continue
-					}
+				lookup, err := lookupCell(neighbor, res, cache.resolution)
+				if err != nil {
+					// Skip this resolution; other resolutions may still match
+					continue
 				}
-				matches := z.findCell(lookup, cache)
-				if len(matches) > 0 {
+				if matches := z.findCell(lookup, cache); len(matches) > 0 {
 					return matches[:1], nil
 				}
 			}
@@ -288,24 +281,17 @@ func (z *localTimeZone) getClosestZone(cell h3.Cell, cache *immutableCache) ([]s
 	return getNauticalZone(latLng)
 }
 
-func containsString(s []string, v string) bool {
-	for _, x := range s {
-		if x == v {
-			return true
-		}
-	}
-	return false
-}
-
+// getNauticalZone returns the nautical timezone for a point, used when no
+// timezone boundary covers it. Nautical zones are 15 degrees of longitude
+// wide and centered on multiples of 15 degrees.
 func getNauticalZone(point h3.LatLng) (tzids []string, err error) {
-	z := point.Lng / 7.5
-	z = (math.Abs(z) + 1) / 2
-	z = math.Floor(z)
-	if z == 0 {
-		return append(tzids, "Etc/GMT"), nil
+	offset := math.Floor((math.Abs(point.Lng/7.5) + 1) / 2)
+	switch {
+	case offset == 0:
+		return []string{"Etc/GMT"}, nil
+	case point.Lng < 0:
+		return []string{fmt.Sprintf("Etc/GMT+%.f", offset)}, nil
+	default:
+		return []string{fmt.Sprintf("Etc/GMT-%.f", offset)}, nil
 	}
-	if point.Lng < 0 {
-		return append(tzids, fmt.Sprintf("Etc/GMT+%.f", z)), nil
-	}
-	return append(tzids, fmt.Sprintf("Etc/GMT-%.f", z)), nil
 }

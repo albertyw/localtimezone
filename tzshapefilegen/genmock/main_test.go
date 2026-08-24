@@ -36,11 +36,11 @@ func parseMockData(t *testing.T, compressed []byte) (names []string, cells []h3.
 	}
 	cellCount := int(binary.LittleEndian.Uint32(data[offset : offset+4]))
 	offset += 4
-	if len(data) != offset+cellCount*10 {
-		t.Fatalf("unexpected data length %d, want %d", len(data), offset+cellCount*10)
+	if len(data) != offset+cellCount*entrySize {
+		t.Fatalf("unexpected data length %d, want %d", len(data), offset+cellCount*entrySize)
 	}
 	for i := range cellCount {
-		base := offset + i*10
+		base := offset + i*entrySize
 		cells = append(cells, h3.Cell(binary.LittleEndian.Uint64(data[base:base+8])))
 		if idx := binary.LittleEndian.Uint16(data[base+8 : base+10]); idx != 0 {
 			t.Errorf("expected timezone index 0, got %d", idx)

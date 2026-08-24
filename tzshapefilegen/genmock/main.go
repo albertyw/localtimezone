@@ -8,13 +8,17 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"sort"
+	"slices"
 
 	"github.com/klauspost/compress/s2"
 	"github.com/uber/h3-go/v4"
 )
 
 const h3Resolution = 7
+
+// entrySize is the size of one encoded cell entry: 8 bytes for the int64 cell
+// followed by 2 bytes for the uint16 timezone index.
+const entrySize = 10
 
 // buildMockData builds the compressed mock H3 dataset.
 func buildMockData() ([]byte, error) {
@@ -26,37 +30,34 @@ func buildMockData() ([]byte, error) {
 	}
 	fmt.Printf("Using %d resolution-0 base cells for mock data\n", len(cells))
 
-	// Sort cells
-	sort.Slice(cells, func(i, j int) bool {
-		return cells[i] < cells[j]
-	})
+	// Sort cells for binary search
+	slices.Sort(cells)
 
 	// Build binary format
-	tzName := "America/Los_Angeles"
-	tzNameBytes := []byte(tzName)
-
+	tzNameBytes := []byte("America/Los_Angeles")
+	var u16 [2]byte
+	var u32 [4]byte
 	var buf bytes.Buffer
 
 	// Header
 	buf.Write([]byte("H3TZ"))
 	buf.WriteByte(1) // Version
 	buf.WriteByte(byte(h3Resolution))
-	var tmp [4]byte
-	binary.LittleEndian.PutUint16(tmp[:2], 1) // 1 timezone string
-	buf.Write(tmp[:2])
+	binary.LittleEndian.PutUint16(u16[:], 1) // 1 timezone string
+	buf.Write(u16[:])
 
 	// String table
-	binary.LittleEndian.PutUint16(tmp[:2], uint16(len(tzNameBytes)))
-	buf.Write(tmp[:2])
+	binary.LittleEndian.PutUint16(u16[:], uint16(len(tzNameBytes)))
+	buf.Write(u16[:])
 	buf.Write(tzNameBytes)
 
 	// Cell data: bulk write using direct byte encoding
-	binary.LittleEndian.PutUint32(tmp[:4], uint32(len(cells)))
-	buf.Write(tmp[:4])
+	binary.LittleEndian.PutUint32(u32[:], uint32(len(cells)))
+	buf.Write(u32[:])
 
-	entryBuf := make([]byte, len(cells)*10)
+	entryBuf := make([]byte, len(cells)*entrySize)
 	for i, c := range cells {
-		base := i * 10
+		base := i * entrySize
 		binary.LittleEndian.PutUint64(entryBuf[base:base+8], uint64(c))
 		binary.LittleEndian.PutUint16(entryBuf[base+8:base+10], 0) // index 0 = "America/Los_Angeles"
 	}
