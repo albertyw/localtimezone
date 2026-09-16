@@ -3,7 +3,7 @@
 package localtimezone
 
 // TZBoundaryVersion is the version of tzdata that was used to generate timezone boundaries
-const TZBoundaryVersion = "2026c"
+const TZBoundaryVersion = "2026d"
 
 // TZCount is the number of tzdata timezones supported
 const TZCount = 444
