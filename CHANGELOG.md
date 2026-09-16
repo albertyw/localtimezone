@@ -1,6 +1,15 @@
 CHANGELOG
 =========
 
+v4.0.3 (2026-09-16)
+-------------------
+
+- Update to tzdata 2026d
+- Various refactors and code simplification
+- Dependency updates; now require at least Go 1.25
+- Backfill test coverage
+
+
 v4.0.2 (2026-07-11)
 -------------------
 
