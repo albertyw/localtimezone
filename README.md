@@ -2,7 +2,6 @@
 
 [![Build Status](https://drone.albertyw.com/api/badges/albertyw/localtimezone/status.svg)](https://drone.albertyw.com/albertyw/localtimezone)
 [![Go Reference](https://pkg.go.dev/badge/github.com/albertyw/localtimezone/v4.svg)](https://pkg.go.dev/github.com/albertyw/localtimezone/v4)
-[![Go Report Card](https://goreportcard.com/badge/github.com/albertyw/localtimezone/v4)](https://goreportcard.com/report/github.com/albertyw/localtimezone/v4)
 [![Maintainability](https://qlty.sh/gh/albertyw/projects/localtimezone/maintainability.svg)](https://qlty.sh/gh/albertyw/projects/localtimezone)
 [![Code Coverage](https://qlty.sh/gh/albertyw/projects/localtimezone/coverage.svg)](https://qlty.sh/gh/albertyw/projects/localtimezone)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
