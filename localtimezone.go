@@ -232,7 +232,35 @@ func lookupCell(cell h3.Cell, res, resolution int) (h3.Cell, error) {
 	if res == resolution {
 		return cell, nil
 	}
-	return cell.Parent(res)
+	return parentCell(cell, res)
+}
+
+// An H3 index stores its resolution in bits 52-55 and one 3-bit digit per
+// resolution 1 through 15 in the low 45 bits. Digits finer than the index's
+// own resolution are all ones.
+const (
+	h3ResolutionOffset = 52
+	h3ResolutionMask   = uint64(0xf) << h3ResolutionOffset
+	h3MaxResolution    = 15
+	h3DigitBits        = 3
+)
+
+// parentCell returns the ancestor of cell at resolution res. It is a pure Go
+// equivalent of h3's cellToParent: rewrite the resolution field and blank
+// every digit finer than res. h3-go is a cgo binding, and getZone walks up to
+// eight resolutions per lookup, so avoiding the cgo call here is worth the
+// duplicated knowledge of the index layout.
+func parentCell(cell h3.Cell, res int) (h3.Cell, error) {
+	index := uint64(cell)
+	resolution := int((index & h3ResolutionMask) >> h3ResolutionOffset)
+	if res < 0 || res > resolution {
+		return 0, fmt.Errorf("resolution %d is not an ancestor of resolution %d", res, resolution)
+	}
+	index = index&^h3ResolutionMask | uint64(res)<<h3ResolutionOffset
+	// Unused digits are all ones, so every digit finer than res blanks out as
+	// a single run of set bits.
+	index |= uint64(1)<<((h3MaxResolution-res)*h3DigitBits) - 1
+	return h3.Cell(index), nil
 }
 
 // findCell returns all timezone names matching a cell via binary search.

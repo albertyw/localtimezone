@@ -431,3 +431,48 @@ func TestLoadOverwrite(t *testing.T) {
 		t.Errorf("cache not overwritten by loading new data")
 	}
 }
+
+func TestParentCellMatchesH3(t *testing.T) {
+	t.Parallel()
+	data, err := generateTestCases()
+	if err != nil {
+		t.Fatalf("cannot initialize test cases: %v", err)
+	}
+	client, ok := NewLocalTimeZone().(*localTimeZone)
+	if !ok {
+		t.Fatal("client is not a *localTimeZone")
+	}
+	resolution := client.data.Load().resolution
+	for _, tc := range data {
+		cell, err := h3.LatLngToCell(h3.NewLatLng(tc.Lat, tc.Lon), resolution)
+		if err != nil {
+			t.Fatalf("%s: cannot convert to cell: %v", tc.City, err)
+		}
+		for res := 0; res <= resolution; res++ {
+			want, err := cell.Parent(res)
+			if err != nil {
+				t.Fatalf("%s: h3 parent at resolution %d: %v", tc.City, res, err)
+			}
+			got, err := parentCell(cell, res)
+			if err != nil {
+				t.Fatalf("%s: parentCell at resolution %d: %v", tc.City, res, err)
+			}
+			if got != want {
+				t.Errorf("%s: parentCell at resolution %d = %x, want %x", tc.City, res, uint64(got), uint64(want))
+			}
+		}
+	}
+}
+
+func TestParentCellOutOfRange(t *testing.T) {
+	t.Parallel()
+	cell, err := h3.LatLngToCell(h3.NewLatLng(37.7749, -122.4194), 5)
+	if err != nil {
+		t.Fatalf("cannot convert to cell: %v", err)
+	}
+	for _, res := range []int{-1, 6, 16} {
+		if _, err := parentCell(cell, res); err == nil {
+			t.Errorf("resolution %d: expected an error; got none", res)
+		}
+	}
+}
