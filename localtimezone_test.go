@@ -384,13 +384,13 @@ func TestGetZoneDeduplicatesZones(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot create H3 cell: %v", err)
 	}
-	parentCell, err := cell.Parent(resolution - 1)
+	parent, err := cell.Parent(resolution - 1)
 	if err != nil {
 		t.Fatalf("cannot get parent H3 cell: %v", err)
 	}
 
 	// Sort cell values for binary search in findCell
-	c0, c1 := int64(cell), int64(parentCell)
+	c0, c1 := int64(cell), int64(parent)
 	if c0 > c1 {
 		c0, c1 = c1, c0
 	}

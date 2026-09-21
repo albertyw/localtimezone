@@ -209,12 +209,14 @@ func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err e
 			// Skip this resolution; other resolutions may still match
 			continue
 		}
-		for _, m := range z.findCell(lookup, cache) {
+		start, end := cache.findCell(lookup)
+		for i := start; i < end; i++ {
+			tzid := cache.tzNames[cache.tzIdx[i]]
 			if single {
-				return []string{m}, nil
+				return []string{tzid}, nil
 			}
-			if !slices.Contains(tzids, m) {
-				tzids = append(tzids, m)
+			if !slices.Contains(tzids, tzid) {
+				tzids = append(tzids, tzid)
 			}
 		}
 	}
@@ -263,24 +265,24 @@ func parentCell(cell h3.Cell, res int) (h3.Cell, error) {
 	return h3.Cell(index), nil
 }
 
-// findCell returns all timezone names matching a cell via binary search.
-// Since the cells array may contain duplicate cell values (for overlapping zones),
-// it scans forward from the first matching index returned by sort.Search.
-func (z *localTimeZone) findCell(cell h3.Cell, cache *immutableCache) []string {
+// findCell returns the half-open range of entries matching a cell, found by
+// binary search. The range is empty when the cell is absent. The cells array
+// may hold duplicate cell values for overlapping zones, so the range covers
+// every entry with that value rather than just the first.
+//
+// Returning indices instead of names keeps the caller in control of whether a
+// slice is built at all.
+func (c *immutableCache) findCell(cell h3.Cell) (start, end int) {
 	cellVal := int64(cell)
-	idx := sort.Search(len(cache.cells), func(i int) bool {
-		return cache.cells[i] >= cellVal
+	start = sort.Search(len(c.cells), func(i int) bool {
+		return c.cells[i] >= cellVal
 	})
-	if idx >= len(cache.cells) || cache.cells[idx] != cellVal {
-		return nil
+	if start >= len(c.cells) || c.cells[start] != cellVal {
+		return 0, 0
 	}
-
-	var results []string
-	// Scan forward from idx to collect all entries with same cell
-	for i := idx; i < len(cache.cells) && cache.cells[i] == cellVal; i++ {
-		results = append(results, cache.tzNames[cache.tzIdx[i]])
+	for end = start; end < len(c.cells) && c.cells[end] == cellVal; end++ {
 	}
-	return results
+	return start, end
 }
 
 func (z *localTimeZone) getClosestZone(cell h3.Cell, cache *immutableCache) ([]string, error) {
@@ -298,8 +300,8 @@ func (z *localTimeZone) getClosestZone(cell h3.Cell, cache *immutableCache) ([]s
 					// Skip this resolution; other resolutions may still match
 					continue
 				}
-				if matches := z.findCell(lookup, cache); len(matches) > 0 {
-					return matches[:1], nil
+				if start, end := cache.findCell(lookup); start < end {
+					return []string{cache.tzNames[cache.tzIdx[start]]}, nil
 				}
 			}
 		}
