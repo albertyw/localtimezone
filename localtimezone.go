@@ -181,19 +181,21 @@ func (z *localTimeZone) GetZone(point Point) (tzids []string, err error) {
 		return nil, err
 	}
 
+	hi := len(cache.cells)
 	for res := cache.resolution; res >= 0; res-- {
 		lookup, err := lookupCell(cell, res, cache.resolution)
 		if err != nil {
 			// Skip this resolution; other resolutions may still match
 			continue
 		}
-		start, end := cache.findCell(lookup)
+		start, end := cache.findCell(lookup, hi)
 		for i := start; i < end; i++ {
 			tzid := cache.tzNames[cache.tzIdx[i]]
 			if !slices.Contains(tzids, tzid) {
 				tzids = append(tzids, tzid)
 			}
 		}
+		hi = start
 	}
 	if len(tzids) > 0 {
 		return tzids, nil
@@ -211,15 +213,18 @@ func (z *localTimeZone) GetOneZone(point Point) (tzid string, err error) {
 		return "", err
 	}
 
+	hi := len(cache.cells)
 	for res := cache.resolution; res >= 0; res-- {
 		lookup, err := lookupCell(cell, res, cache.resolution)
 		if err != nil {
 			// Skip this resolution; other resolutions may still match
 			continue
 		}
-		if start, end := cache.findCell(lookup); start < end {
+		start, end := cache.findCell(lookup, hi)
+		if start < end {
 			return cache.tzNames[cache.tzIdx[start]], nil
 		}
+		hi = start
 	}
 
 	return z.closestZone(cell, cache), nil
@@ -278,20 +283,21 @@ func parentCell(cell h3.Cell, res int) (h3.Cell, error) {
 	return h3.Cell(index), nil
 }
 
-// findCell returns the half-open range of entries matching a cell, found by
-// binary search. The range is empty when the cell is absent. The cells array
-// may hold duplicate cell values for overlapping zones, so the range covers
-// every entry with that value rather than just the first.
+// findCell returns the half-open range of entries matching a cell, searching
+// only cells[:hi]. The range is empty when the cell is absent, and start is
+// then the insertion point, which callers use to bound their next search. The
+// cells array may hold duplicate cell values for overlapping zones, so the
+// range covers every entry with that value rather than just the first.
 //
 // Returning indices instead of names keeps the caller in control of whether a
 // slice is built at all, which is what lets GetOneZone allocate nothing.
-func (c *immutableCache) findCell(cell h3.Cell) (start, end int) {
+func (c *immutableCache) findCell(cell h3.Cell, hi int) (start, end int) {
 	cellVal := int64(cell)
-	start = sort.Search(len(c.cells), func(i int) bool {
+	start = sort.Search(hi, func(i int) bool {
 		return c.cells[i] >= cellVal
 	})
-	if start >= len(c.cells) || c.cells[start] != cellVal {
-		return 0, 0
+	if start >= hi || c.cells[start] != cellVal {
+		return start, start
 	}
 	for end = start; end < len(c.cells) && c.cells[end] == cellVal; end++ {
 	}
@@ -311,15 +317,18 @@ func (z *localTimeZone) closestZone(cell h3.Cell, cache *immutableCache) string 
 			continue
 		}
 		for _, neighbor := range ring {
+			hi := len(cache.cells)
 			for res := cache.resolution; res >= 0; res-- {
 				lookup, err := lookupCell(neighbor, res, cache.resolution)
 				if err != nil {
 					// Skip this resolution; other resolutions may still match
 					continue
 				}
-				if start, end := cache.findCell(lookup); start < end {
+				start, end := cache.findCell(lookup, hi)
+				if start < end {
 					return cache.tzNames[cache.tzIdx[start]]
 				}
+				hi = start
 			}
 		}
 	}

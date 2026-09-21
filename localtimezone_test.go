@@ -476,3 +476,38 @@ func TestParentCellOutOfRange(t *testing.T) {
 		}
 	}
 }
+
+// TestParentCellOrdering checks the invariant the resolution walk relies on:
+// an H3 index stores its resolution in bits 52-55, above the base cell and the
+// digits, so a parent always sorts before its child. That is what lets each
+// search in the walk bound itself by the previous search's insertion point.
+func TestParentCellOrdering(t *testing.T) {
+	t.Parallel()
+	data, err := generateTestCases()
+	if err != nil {
+		t.Fatalf("cannot initialize test cases: %v", err)
+	}
+	client, ok := NewLocalTimeZone().(*localTimeZone)
+	if !ok {
+		t.Fatal("client is not a *localTimeZone")
+	}
+	resolution := client.data.Load().resolution
+	for _, tc := range data {
+		cell, err := h3.LatLngToCell(h3.NewLatLng(tc.Lat, tc.Lon), resolution)
+		if err != nil {
+			t.Fatalf("%s: cannot convert to cell: %v", tc.City, err)
+		}
+		previous := int64(cell)
+		for res := resolution - 1; res >= 0; res-- {
+			parent, err := parentCell(cell, res)
+			if err != nil {
+				t.Fatalf("%s: parentCell at resolution %d: %v", tc.City, res, err)
+			}
+			if int64(parent) >= previous {
+				t.Fatalf("%s: parent at resolution %d (%x) does not sort before %x",
+					tc.City, res, uint64(parent), uint64(previous))
+			}
+			previous = int64(parent)
+		}
+	}
+}
