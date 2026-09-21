@@ -224,7 +224,7 @@ func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err e
 		return tzids, nil
 	}
 
-	return z.getClosestZone(cell, cache)
+	return []string{z.closestZone(cell, cache)}, nil
 }
 
 // lookupCell returns the cell to search for at resolution res. Cells are
@@ -285,7 +285,11 @@ func (c *immutableCache) findCell(cell h3.Cell) (start, end int) {
 	return start, end
 }
 
-func (z *localTimeZone) getClosestZone(cell h3.Cell, cache *immutableCache) ([]string, error) {
+// closestZone finds a zone for a cell that no stored cell covers, by searching
+// outward through neighbouring cells and finally falling back to the nautical
+// zone for the cell's longitude. The nautical fallback always yields a zone,
+// so this never fails.
+func (z *localTimeZone) closestZone(cell h3.Cell, cache *immutableCache) string {
 	// Expanding ring search
 	for k := 1; k <= maxFallbackRings; k++ {
 		ring, err := cell.GridDisk(k)
@@ -301,27 +305,27 @@ func (z *localTimeZone) getClosestZone(cell h3.Cell, cache *immutableCache) ([]s
 					continue
 				}
 				if start, end := cache.findCell(lookup); start < end {
-					return []string{cache.tzNames[cache.tzIdx[start]]}, nil
+					return cache.tzNames[cache.tzIdx[start]]
 				}
 			}
 		}
 	}
 	// Final fallback: nautical zone
 	latLng, _ := cell.LatLng()
-	return getNauticalZone(latLng)
+	return nauticalZone(latLng)
 }
 
-// getNauticalZone returns the nautical timezone for a point, used when no
+// nauticalZone returns the nautical timezone for a point, used when no
 // timezone boundary covers it. Nautical zones are 15 degrees of longitude
 // wide and centered on multiples of 15 degrees.
-func getNauticalZone(point h3.LatLng) (tzids []string, err error) {
+func nauticalZone(point h3.LatLng) string {
 	offset := math.Floor((math.Abs(point.Lng/7.5) + 1) / 2)
 	switch {
 	case offset == 0:
-		return []string{"Etc/GMT"}, nil
+		return "Etc/GMT"
 	case point.Lng < 0:
-		return []string{fmt.Sprintf("Etc/GMT+%.f", offset)}, nil
+		return fmt.Sprintf("Etc/GMT+%.f", offset)
 	default:
-		return []string{fmt.Sprintf("Etc/GMT-%.f", offset)}, nil
+		return fmt.Sprintf("Etc/GMT-%.f", offset)
 	}
 }

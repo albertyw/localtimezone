@@ -126,14 +126,9 @@ func TestZonesValidLoadLocation(t *testing.T) {
 	// The nautical fallback zones are generated at lookup time rather than stored
 	// in the data, so verify they are loadable across the full longitude range too.
 	for lon := -180.0; lon <= 180.0; lon += 7.5 {
-		zones, err := getNauticalZone(h3.NewLatLng(0, lon))
-		if err != nil {
-			t.Fatalf("cannot get nautical zone for lon %f: %v", lon, err)
-		}
-		for _, name := range zones {
-			if _, err := time.LoadLocation(name); err != nil {
-				t.Errorf("nautical timezone %q is not valid for time.LoadLocation: %v", name, err)
-			}
+		name := nauticalZone(h3.NewLatLng(0, lon))
+		if _, err := time.LoadLocation(name); err != nil {
+			t.Errorf("nautical timezone %q is not valid for time.LoadLocation: %v", name, err)
 		}
 	}
 }
