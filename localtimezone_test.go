@@ -377,7 +377,7 @@ func TestLoadH3Malformed(t *testing.T) {
 func TestGetZoneDeduplicatesZones(t *testing.T) {
 	t.Parallel()
 	// Build a synthetic cache where both a cell and its parent cell map to the same
-	// timezone, verifying that getZone does not return duplicate zone entries.
+	// timezone, verifying that GetZone does not return duplicate zone entries.
 	latLng := h3.NewLatLng(35.6828387, 139.7594549) // Tokyo
 	resolution := 2
 	cell, err := h3.LatLngToCell(latLng, resolution)
@@ -404,7 +404,7 @@ func TestGetZoneDeduplicatesZones(t *testing.T) {
 	z := &localTimeZone{}
 	z.data.Store(cache)
 
-	zones, err := z.getZone(Point{Lon: 139.7594549, Lat: 35.6828387}, false)
+	zones, err := z.GetZone(Point{Lon: 139.7594549, Lat: 35.6828387})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

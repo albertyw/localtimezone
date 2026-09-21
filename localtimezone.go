@@ -176,29 +176,7 @@ func (z *localTimeZone) load(dataCompressed []byte) error {
 
 // GetZone returns a slice of strings containing time zone id's for a given Point
 func (z *localTimeZone) GetZone(point Point) (tzids []string, err error) {
-	return z.getZone(point, false)
-}
-
-// GetOneZone returns a single zone id for a given Point
-func (z *localTimeZone) GetOneZone(point Point) (tzid string, err error) {
-	tzids, err := z.getZone(point, true)
-	if err != nil {
-		return "", err
-	}
-	if len(tzids) == 0 {
-		return "", ErrNoTimeZone
-	}
-	return tzids[0], err
-}
-
-func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err error) {
-	if point.Lon > 180 || point.Lon < -180 || point.Lat > 90 || point.Lat < -90 {
-		return nil, ErrOutOfRange
-	}
-
-	cache := z.data.Load()
-	latLng := h3.NewLatLng(point.Lat, point.Lon)
-	cell, err := h3.LatLngToCell(latLng, cache.resolution)
+	cell, cache, err := z.cellForPoint(point)
 	if err != nil {
 		return nil, err
 	}
@@ -212,9 +190,6 @@ func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err e
 		start, end := cache.findCell(lookup)
 		for i := start; i < end; i++ {
 			tzid := cache.tzNames[cache.tzIdx[i]]
-			if single {
-				return []string{tzid}, nil
-			}
 			if !slices.Contains(tzids, tzid) {
 				tzids = append(tzids, tzid)
 			}
@@ -225,6 +200,44 @@ func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err e
 	}
 
 	return []string{z.closestZone(cell, cache)}, nil
+}
+
+// GetOneZone returns a single zone id for a given Point.
+// It walks the same resolutions as GetZone but stops at the first match and
+// never builds a slice, so the lookup allocates nothing of its own.
+func (z *localTimeZone) GetOneZone(point Point) (tzid string, err error) {
+	cell, cache, err := z.cellForPoint(point)
+	if err != nil {
+		return "", err
+	}
+
+	for res := cache.resolution; res >= 0; res-- {
+		lookup, err := lookupCell(cell, res, cache.resolution)
+		if err != nil {
+			// Skip this resolution; other resolutions may still match
+			continue
+		}
+		if start, end := cache.findCell(lookup); start < end {
+			return cache.tzNames[cache.tzIdx[start]], nil
+		}
+	}
+
+	return z.closestZone(cell, cache), nil
+}
+
+// cellForPoint validates a Point and resolves it to a cell at the data's own
+// resolution, alongside the cache the cell was resolved against.
+func (z *localTimeZone) cellForPoint(point Point) (h3.Cell, *immutableCache, error) {
+	if point.Lon > 180 || point.Lon < -180 || point.Lat > 90 || point.Lat < -90 {
+		return 0, nil, ErrOutOfRange
+	}
+
+	cache := z.data.Load()
+	cell, err := h3.LatLngToCell(h3.NewLatLng(point.Lat, point.Lon), cache.resolution)
+	if err != nil {
+		return 0, nil, err
+	}
+	return cell, cache, nil
 }
 
 // lookupCell returns the cell to search for at resolution res. Cells are
@@ -249,9 +262,9 @@ const (
 
 // parentCell returns the ancestor of cell at resolution res. It is a pure Go
 // equivalent of h3's cellToParent: rewrite the resolution field and blank
-// every digit finer than res. h3-go is a cgo binding, and getZone walks up to
-// eight resolutions per lookup, so avoiding the cgo call here is worth the
-// duplicated knowledge of the index layout.
+// every digit finer than res. h3-go is a cgo binding, and GetZone and
+// GetOneZone walk up to eight resolutions per lookup, so avoiding the cgo call
+// here is worth the duplicated knowledge of the index layout.
 func parentCell(cell h3.Cell, res int) (h3.Cell, error) {
 	index := uint64(cell)
 	resolution := int((index & h3ResolutionMask) >> h3ResolutionOffset)
@@ -271,7 +284,7 @@ func parentCell(cell h3.Cell, res int) (h3.Cell, error) {
 // every entry with that value rather than just the first.
 //
 // Returning indices instead of names keeps the caller in control of whether a
-// slice is built at all.
+// slice is built at all, which is what lets GetOneZone allocate nothing.
 func (c *immutableCache) findCell(cell h3.Cell) (start, end int) {
 	cellVal := int64(cell)
 	start = sort.Search(len(c.cells), func(i int) bool {
