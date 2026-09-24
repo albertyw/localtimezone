@@ -84,6 +84,20 @@ ok      github.com/albertyw/localtimezone/v4    6.113s
 
 Lookups take under a microsecond; client initialization takes ~5ms.
 
+```
+go test -bench=BenchmarkClientMemory -benchmem -memprofile memprofile.out
+goos: linux
+goarch: amd64
+pkg: github.com/albertyw/localtimezone/v4
+cpu: AMD Ryzen 9 7900X 12-Core Processor
+BenchmarkClientMemory/main_client-24                 151           9009555 retained-B/op        18004371 B/op        425 allocs/op
+BenchmarkClientMemory/mock_client-24                1245              1398 retained-B/op            2691 B/op          7 allocs/op
+PASS
+ok      github.com/albertyw/localtimezone/v4    2.501s
+```
+
+A client retains ~9MB of heap; the other half of the ~18MB allocated during initialization is a decompression buffer that is freed afterwards.
+
 ## Development
 
 ```bash
@@ -96,6 +110,7 @@ make race
 
 # To run benchmarks
 make benchmark
+make benchmark-memory
 ```
 
 The data comes from [timezone-boundary-builder](https://github.com/evansiroky/timezone-boundary-builder). Check the releases page for the latest version.
