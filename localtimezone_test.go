@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"runtime"
 	"sync"
 	"testing"
 
@@ -287,6 +288,35 @@ func BenchmarkClientInit(b *testing.B) {
 			}
 		}
 	})
+}
+
+// BenchmarkClientMemory reports the heap a client keeps alive after init, as
+// opposed to -benchmem's bytes allocated, which also counts the transient
+// decompression buffer.
+func BenchmarkClientMemory(b *testing.B) {
+	b.Run("main client", func(b *testing.B) {
+		benchmarkRetainedHeap(b, NewLocalTimeZone)
+	})
+	b.Run("mock client", func(b *testing.B) {
+		benchmarkRetainedHeap(b, NewMockLocalTimeZone)
+	})
+}
+
+func benchmarkRetainedHeap(b *testing.B, newClient func() LocalTimeZone) {
+	var before, after runtime.MemStats
+	var retained int64
+	for b.Loop() {
+		runtime.GC()
+		runtime.ReadMemStats(&before)
+		client := newClient()
+		runtime.GC()
+		runtime.ReadMemStats(&after)
+		runtime.KeepAlive(client)
+		retained += int64(after.HeapAlloc) - int64(before.HeapAlloc)
+	}
+	b.ReportMetric(float64(retained)/float64(b.N), "retained-B/op")
+	// Forced GCs dominate the timing, so ns/op would be misleading.
+	b.ReportMetric(0, "ns/op")
 }
 
 func TestNautical(t *testing.T) {

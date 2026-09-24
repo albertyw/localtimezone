@@ -59,6 +59,10 @@ benchmark-getzone:
 benchmark-clientinit:
 	go test -bench=BenchmarkClientInit -benchmem -cpuprofile cpuprofile.out -memprofile memprofile.out
 
+.PHONY:benchmark-memory
+benchmark-memory:
+	go test -bench=BenchmarkClientMemory -benchmem -memprofile memprofile.out
+
 .PHONY:cpuprof
 cpuprof:
 	go tool pprof -top cpuprofile.out | head -n 20
