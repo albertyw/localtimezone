@@ -310,9 +310,9 @@ func TestNautical(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(fmt.Sprintf("%f %s", tc.lon, tc.zone), func(t *testing.T) {
 			t.Parallel()
-			z, _ := getNauticalZone(h3.NewLatLng(0, tc.lon))
-			if z[0] != tc.zone {
-				t.Errorf("expected %s got %s", tc.zone, z[0])
+			z := nauticalZone(h3.NewLatLng(0, tc.lon))
+			if z != tc.zone {
+				t.Errorf("expected %s got %s", tc.zone, z)
 			}
 		})
 	}
@@ -377,20 +377,20 @@ func TestLoadH3Malformed(t *testing.T) {
 func TestGetZoneDeduplicatesZones(t *testing.T) {
 	t.Parallel()
 	// Build a synthetic cache where both a cell and its parent cell map to the same
-	// timezone, verifying that getZone does not return duplicate zone entries.
+	// timezone, verifying that GetZone does not return duplicate zone entries.
 	latLng := h3.NewLatLng(35.6828387, 139.7594549) // Tokyo
 	resolution := 2
 	cell, err := h3.LatLngToCell(latLng, resolution)
 	if err != nil {
 		t.Fatalf("cannot create H3 cell: %v", err)
 	}
-	parentCell, err := cell.Parent(resolution - 1)
+	parent, err := cell.Parent(resolution - 1)
 	if err != nil {
 		t.Fatalf("cannot get parent H3 cell: %v", err)
 	}
 
 	// Sort cell values for binary search in findCell
-	c0, c1 := int64(cell), int64(parentCell)
+	c0, c1 := int64(cell), int64(parent)
 	if c0 > c1 {
 		c0, c1 = c1, c0
 	}
@@ -404,7 +404,7 @@ func TestGetZoneDeduplicatesZones(t *testing.T) {
 	z := &localTimeZone{}
 	z.data.Store(cache)
 
-	zones, err := z.getZone(Point{Lon: 139.7594549, Lat: 35.6828387}, false)
+	zones, err := z.GetZone(Point{Lon: 139.7594549, Lat: 35.6828387})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -473,6 +473,41 @@ func TestParentCellOutOfRange(t *testing.T) {
 	for _, res := range []int{-1, 6, 16} {
 		if _, err := parentCell(cell, res); err == nil {
 			t.Errorf("resolution %d: expected an error; got none", res)
+		}
+	}
+}
+
+// TestParentCellOrdering checks the invariant the resolution walk relies on:
+// an H3 index stores its resolution in bits 52-55, above the base cell and the
+// digits, so a parent always sorts before its child. That is what lets each
+// search in the walk bound itself by the previous search's insertion point.
+func TestParentCellOrdering(t *testing.T) {
+	t.Parallel()
+	data, err := generateTestCases()
+	if err != nil {
+		t.Fatalf("cannot initialize test cases: %v", err)
+	}
+	client, ok := NewLocalTimeZone().(*localTimeZone)
+	if !ok {
+		t.Fatal("client is not a *localTimeZone")
+	}
+	resolution := client.data.Load().resolution
+	for _, tc := range data {
+		cell, err := h3.LatLngToCell(h3.NewLatLng(tc.Lat, tc.Lon), resolution)
+		if err != nil {
+			t.Fatalf("%s: cannot convert to cell: %v", tc.City, err)
+		}
+		previous := int64(cell)
+		for res := resolution - 1; res >= 0; res-- {
+			parent, err := parentCell(cell, res)
+			if err != nil {
+				t.Fatalf("%s: parentCell at resolution %d: %v", tc.City, res, err)
+			}
+			if int64(parent) >= previous {
+				t.Fatalf("%s: parent at resolution %d (%x) does not sort before %x",
+					tc.City, res, uint64(parent), uint64(previous))
+			}
+			previous = int64(parent)
 		}
 	}
 }

@@ -73,16 +73,16 @@ goos: linux
 goarch: amd64
 pkg: github.com/albertyw/localtimezone/v4
 cpu: AMD Ryzen 9 7900X 12-Core Processor
-BenchmarkGetZone/GetZone_on_large_cities-24               989595              1205 ns/op             116 B/op         11 allocs/op
-BenchmarkGetZone/GetOneZone_on_large_cities-24           1000000              1006 ns/op              86 B/op          7 allocs/op
-BenchmarkZones/test_cases-24                              237181              4559 ns/op            1025 B/op        110 allocs/op
-BenchmarkClientInit/main_client-24                           247           4772720 ns/op        17947054 B/op        425 allocs/op
-BenchmarkClientInit/mock_client-24                        735993              1458 ns/op            2688 B/op          7 allocs/op
+BenchmarkGetZone/GetZone_on_large_cities-24              1637100               736.2 ns/op            40 B/op          3 allocs/op
+BenchmarkGetZone/GetOneZone_on_large_cities-24           1982846               604.9 ns/op            24 B/op          2 allocs/op
+BenchmarkZones/test_cases-24                              807022              1474 ns/op             170 B/op          4 allocs/op
+BenchmarkClientInit/main_client-24                           205           5473409 ns/op        18004375 B/op        425 allocs/op
+BenchmarkClientInit/mock_client-24                        681598              1676 ns/op            2688 B/op          7 allocs/op
 PASS
-ok      github.com/albertyw/localtimezone/v4    5.662s
+ok      github.com/albertyw/localtimezone/v4    6.113s
 ```
 
-Lookups take ~1 microsecond; client initialization takes ~5ms.
+Lookups take under a microsecond; client initialization takes ~5ms.
 
 ## Development
 
@@ -104,7 +104,7 @@ The data comes from [timezone-boundary-builder](https://github.com/evansiroky/ti
 
 At build time, timezone polygon boundaries from timezone-boundary-builder are converted to [H3](https://h3geo.org/) hexagonal cells at resolution 7 (~5.16 km² per cell). Cells covering a uniform timezone region are compacted into coarser-resolution parent cells, shrinking the dataset significantly. The result is serialized into a custom binary format (`H3TZ`), compressed with [S2](https://github.com/klauspost/compress), and embedded directly into the Go binary via `//go:embed`.
 
-At runtime, a lookup converts the input coordinates to an H3 cell ID, then binary-searches a sorted array of cell→timezone entries. If the exact cell is absent (due to compaction), the search walks up the H3 hierarchy to coarser resolutions. Points in international waters fall back to an expanding ring search over neighboring cells, then to a nautical zone derived from longitude.
+At runtime, a lookup converts the input coordinates to an H3 cell ID, then binary-searches a sorted array of cell→timezone entries. If the exact cell is absent (due to compaction), the search walks up the H3 hierarchy to coarser resolutions. Parent cells are derived with bit operations in Go rather than through H3's C library, so unless a lookup falls through to the neighbor search, converting the coordinates is its only cgo call. An H3 index stores its resolution above its other fields, so a parent always sorts before its children; each coarser search therefore only covers the entries below where the previous search ended. `GetOneZone()` stops at the first match without building a result slice, while `GetZone()` collects every overlapping zone. Points in international waters fall back to an expanding ring search over neighboring cells, then to a nautical zone derived from longitude.
 
 ```
 Build time:
@@ -113,13 +113,15 @@ Build time:
           └─► CompactCells
                 └─► H3TZ binary → S2 compress → //go:embed
 
-Runtime (GetZone):
+Runtime (GetZone / GetOneZone):
   (lat, lon)
-    └─► H3 cell ID
+    └─► H3 cell ID                              (cgo)
           └─► binary search sorted cells[]
-                └─► walk parent resolutions (compaction)
-                      └─► GridDisk neighbor fallback
-                            └─► nautical zone fallback
+                └─► walk parent resolutions     (compaction)
+                    │   parents computed in Go; each search is
+                    │   bounded by the previous one's position
+                    └─► GridDisk neighbor fallback
+                          └─► nautical zone fallback
 ```
 
 ## Licenses

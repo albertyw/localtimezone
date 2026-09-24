@@ -176,53 +176,73 @@ func (z *localTimeZone) load(dataCompressed []byte) error {
 
 // GetZone returns a slice of strings containing time zone id's for a given Point
 func (z *localTimeZone) GetZone(point Point) (tzids []string, err error) {
-	return z.getZone(point, false)
-}
-
-// GetOneZone returns a single zone id for a given Point
-func (z *localTimeZone) GetOneZone(point Point) (tzid string, err error) {
-	tzids, err := z.getZone(point, true)
-	if err != nil {
-		return "", err
-	}
-	if len(tzids) == 0 {
-		return "", ErrNoTimeZone
-	}
-	return tzids[0], err
-}
-
-func (z *localTimeZone) getZone(point Point, single bool) (tzids []string, err error) {
-	if point.Lon > 180 || point.Lon < -180 || point.Lat > 90 || point.Lat < -90 {
-		return nil, ErrOutOfRange
-	}
-
-	cache := z.data.Load()
-	latLng := h3.NewLatLng(point.Lat, point.Lon)
-	cell, err := h3.LatLngToCell(latLng, cache.resolution)
+	cell, cache, err := z.cellForPoint(point)
 	if err != nil {
 		return nil, err
 	}
 
+	hi := len(cache.cells)
 	for res := cache.resolution; res >= 0; res-- {
 		lookup, err := lookupCell(cell, res, cache.resolution)
 		if err != nil {
 			// Skip this resolution; other resolutions may still match
 			continue
 		}
-		for _, m := range z.findCell(lookup, cache) {
-			if single {
-				return []string{m}, nil
-			}
-			if !slices.Contains(tzids, m) {
-				tzids = append(tzids, m)
+		start, end := cache.findCell(lookup, hi)
+		for i := start; i < end; i++ {
+			tzid := cache.tzNames[cache.tzIdx[i]]
+			if !slices.Contains(tzids, tzid) {
+				tzids = append(tzids, tzid)
 			}
 		}
+		hi = start
 	}
 	if len(tzids) > 0 {
 		return tzids, nil
 	}
 
-	return z.getClosestZone(cell, cache)
+	return []string{z.closestZone(cell, cache)}, nil
+}
+
+// GetOneZone returns a single zone id for a given Point.
+// It walks the same resolutions as GetZone but stops at the first match and
+// never builds a slice, so the lookup allocates nothing of its own.
+func (z *localTimeZone) GetOneZone(point Point) (tzid string, err error) {
+	cell, cache, err := z.cellForPoint(point)
+	if err != nil {
+		return "", err
+	}
+
+	hi := len(cache.cells)
+	for res := cache.resolution; res >= 0; res-- {
+		lookup, err := lookupCell(cell, res, cache.resolution)
+		if err != nil {
+			// Skip this resolution; other resolutions may still match
+			continue
+		}
+		start, end := cache.findCell(lookup, hi)
+		if start < end {
+			return cache.tzNames[cache.tzIdx[start]], nil
+		}
+		hi = start
+	}
+
+	return z.closestZone(cell, cache), nil
+}
+
+// cellForPoint validates a Point and resolves it to a cell at the data's own
+// resolution, alongside the cache the cell was resolved against.
+func (z *localTimeZone) cellForPoint(point Point) (h3.Cell, *immutableCache, error) {
+	if point.Lon > 180 || point.Lon < -180 || point.Lat > 90 || point.Lat < -90 {
+		return 0, nil, ErrOutOfRange
+	}
+
+	cache := z.data.Load()
+	cell, err := h3.LatLngToCell(h3.NewLatLng(point.Lat, point.Lon), cache.resolution)
+	if err != nil {
+		return 0, nil, err
+	}
+	return cell, cache, nil
 }
 
 // lookupCell returns the cell to search for at resolution res. Cells are
@@ -247,9 +267,9 @@ const (
 
 // parentCell returns the ancestor of cell at resolution res. It is a pure Go
 // equivalent of h3's cellToParent: rewrite the resolution field and blank
-// every digit finer than res. h3-go is a cgo binding, and getZone walks up to
-// eight resolutions per lookup, so avoiding the cgo call here is worth the
-// duplicated knowledge of the index layout.
+// every digit finer than res. h3-go is a cgo binding, and GetZone and
+// GetOneZone walk up to eight resolutions per lookup, so avoiding the cgo call
+// here is worth the duplicated knowledge of the index layout.
 func parentCell(cell h3.Cell, res int) (h3.Cell, error) {
 	index := uint64(cell)
 	resolution := int((index & h3ResolutionMask) >> h3ResolutionOffset)
@@ -263,27 +283,32 @@ func parentCell(cell h3.Cell, res int) (h3.Cell, error) {
 	return h3.Cell(index), nil
 }
 
-// findCell returns all timezone names matching a cell via binary search.
-// Since the cells array may contain duplicate cell values (for overlapping zones),
-// it scans forward from the first matching index returned by sort.Search.
-func (z *localTimeZone) findCell(cell h3.Cell, cache *immutableCache) []string {
+// findCell returns the half-open range of entries matching a cell, searching
+// only cells[:hi]. The range is empty when the cell is absent, and start is
+// then the insertion point, which callers use to bound their next search. The
+// cells array may hold duplicate cell values for overlapping zones, so the
+// range covers every entry with that value rather than just the first.
+//
+// Returning indices instead of names keeps the caller in control of whether a
+// slice is built at all, which is what lets GetOneZone allocate nothing.
+func (c *immutableCache) findCell(cell h3.Cell, hi int) (start, end int) {
 	cellVal := int64(cell)
-	idx := sort.Search(len(cache.cells), func(i int) bool {
-		return cache.cells[i] >= cellVal
+	start = sort.Search(hi, func(i int) bool {
+		return c.cells[i] >= cellVal
 	})
-	if idx >= len(cache.cells) || cache.cells[idx] != cellVal {
-		return nil
+	if start >= hi || c.cells[start] != cellVal {
+		return start, start
 	}
-
-	var results []string
-	// Scan forward from idx to collect all entries with same cell
-	for i := idx; i < len(cache.cells) && cache.cells[i] == cellVal; i++ {
-		results = append(results, cache.tzNames[cache.tzIdx[i]])
+	for end = start; end < len(c.cells) && c.cells[end] == cellVal; end++ {
 	}
-	return results
+	return start, end
 }
 
-func (z *localTimeZone) getClosestZone(cell h3.Cell, cache *immutableCache) ([]string, error) {
+// closestZone finds a zone for a cell that no stored cell covers, by searching
+// outward through neighbouring cells and finally falling back to the nautical
+// zone for the cell's longitude. The nautical fallback always yields a zone,
+// so this never fails.
+func (z *localTimeZone) closestZone(cell h3.Cell, cache *immutableCache) string {
 	// Expanding ring search
 	for k := 1; k <= maxFallbackRings; k++ {
 		ring, err := cell.GridDisk(k)
@@ -292,34 +317,37 @@ func (z *localTimeZone) getClosestZone(cell h3.Cell, cache *immutableCache) ([]s
 			continue
 		}
 		for _, neighbor := range ring {
+			hi := len(cache.cells)
 			for res := cache.resolution; res >= 0; res-- {
 				lookup, err := lookupCell(neighbor, res, cache.resolution)
 				if err != nil {
 					// Skip this resolution; other resolutions may still match
 					continue
 				}
-				if matches := z.findCell(lookup, cache); len(matches) > 0 {
-					return matches[:1], nil
+				start, end := cache.findCell(lookup, hi)
+				if start < end {
+					return cache.tzNames[cache.tzIdx[start]]
 				}
+				hi = start
 			}
 		}
 	}
 	// Final fallback: nautical zone
 	latLng, _ := cell.LatLng()
-	return getNauticalZone(latLng)
+	return nauticalZone(latLng)
 }
 
-// getNauticalZone returns the nautical timezone for a point, used when no
+// nauticalZone returns the nautical timezone for a point, used when no
 // timezone boundary covers it. Nautical zones are 15 degrees of longitude
 // wide and centered on multiples of 15 degrees.
-func getNauticalZone(point h3.LatLng) (tzids []string, err error) {
+func nauticalZone(point h3.LatLng) string {
 	offset := math.Floor((math.Abs(point.Lng/7.5) + 1) / 2)
 	switch {
 	case offset == 0:
-		return []string{"Etc/GMT"}, nil
+		return "Etc/GMT"
 	case point.Lng < 0:
-		return []string{fmt.Sprintf("Etc/GMT+%.f", offset)}, nil
+		return fmt.Sprintf("Etc/GMT+%.f", offset)
 	default:
-		return []string{fmt.Sprintf("Etc/GMT-%.f", offset)}, nil
+		return fmt.Sprintf("Etc/GMT-%.f", offset)
 	}
 }
