@@ -113,6 +113,7 @@ make benchmark
 make benchmark-memory
 
 # To render the data as an interactive world map at tzmap/map.html
+# and a static image at tzmap/map.png
 make map
 ```
 

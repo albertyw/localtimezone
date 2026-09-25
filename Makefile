@@ -61,7 +61,7 @@ benchmark-clientinit:
 
 .PHONY:map
 map:
-	go run ./tzmap -out tzmap/map.html
+	go run ./tzmap -out tzmap/map.html -image tzmap/map.png
 
 .PHONY:benchmark-memory
 benchmark-memory:

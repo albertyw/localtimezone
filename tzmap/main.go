@@ -1,5 +1,5 @@
 // Command tzmap renders the embedded timezone data as an interactive HTML
-// world map. Every pixel of an equirectangular raster is looked up with
+// world map and as a static PNG image. Every pixel of an equirectangular raster is looked up with
 // GetOneZone, so the map shows exactly what the library returns.
 package main
 
@@ -8,6 +8,7 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"image"
@@ -20,6 +21,7 @@ import (
 	"slices"
 	"sync"
 	"text/template"
+	"time"
 
 	localtimezone "github.com/albertyw/localtimezone/v4"
 )
@@ -37,6 +39,7 @@ type raster struct {
 
 func main() {
 	out := flag.String("out", "tzmap/map.html", "path of the HTML file to write")
+	imageOut := flag.String("image", "tzmap/map.png", "path of the PNG image to write")
 	width := flag.Int("width", 3600, "raster width in pixels; the height is half of it")
 	flag.Parse()
 
@@ -44,14 +47,21 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	f, err := os.Create(*out)
+	if err := writeFile(*out, func(w io.Writer) error { return render(w, r) }); err != nil {
+		log.Fatal(err)
+	}
+	year := time.Now().Year()
+	if err := writeFile(*imageOut, func(w io.Writer) error { return renderImage(w, r, year) }); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func writeFile(path string, write func(io.Writer) error) error {
+	f, err := os.Create(path)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	defer f.Close()
-	if err := render(f, r); err != nil {
-		log.Fatal(err)
-	}
+	return errors.Join(write(f), f.Close())
 }
 
 // pixelCenter returns the coordinates at the center of a raster pixel.

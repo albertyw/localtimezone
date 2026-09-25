@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"image/png"
+	"io"
 	"os"
 	"regexp"
 	"strings"
@@ -132,5 +133,12 @@ func TestMapVersion(t *testing.T) {
 	}
 	if got := string(match[1]); got != localtimezone.TZBoundaryVersion {
 		t.Errorf("map.html version = %q, want %q; regenerate it with make map", got, localtimezone.TZBoundaryVersion)
+	}
+}
+
+func TestWriteFileError(t *testing.T) {
+	err := writeFile("missing-directory/map.html", func(io.Writer) error { return nil })
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("err = %v, want %v", err, os.ErrNotExist)
 	}
 }
