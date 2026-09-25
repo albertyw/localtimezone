@@ -38,8 +38,8 @@ type raster struct {
 }
 
 func main() {
-	out := flag.String("out", "tzmap/map.html", "path of the HTML file to write")
-	imageOut := flag.String("image", "tzmap/map.png", "path of the PNG image to write")
+	out := flag.String("out", "map.html", "path of the HTML file to write")
+	imageOut := flag.String("image", "map.png", "path of the PNG image to write")
 	width := flag.Int("width", 3600, "raster width in pixels; the height is half of it")
 	flag.Parse()
 
