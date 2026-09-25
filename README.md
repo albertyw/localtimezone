@@ -53,6 +53,12 @@ Note: `GetZone()` may return an error only for out-of-range coordinates; it retu
 
 Uses timezone boundary data from [timezone-boundary-builder](https://github.com/evansiroky/timezone-boundary-builder/), indexed with [H3](https://h3geo.org/) hexagonal cells for fast lookups.
 
+## Map
+
+[![World map of timezones](tzmap/map.png)](https://html-preview.github.io/?url=https://github.com/albertyw/localtimezone/blob/master/tzmap/map.html)
+
+Every pixel above is one `GetOneZone` lookup. [Open the interactive map](https://html-preview.github.io/?url=https://github.com/albertyw/localtimezone/blob/master/tzmap/map.html) to hover over a region for its timezone and click through to its Wikipedia page.
+
 ## Features
 
 - The timezone data is embedded in the build binary
