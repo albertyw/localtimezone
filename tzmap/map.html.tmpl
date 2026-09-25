@@ -185,6 +185,7 @@
     <a href="https://github.com/evansiroky/timezone-boundary-builder" target="_blank" rel="noopener">timezone-boundary-builder</a>
     (ODbL) as indexed by <a href="https://github.com/albertyw/localtimezone" target="_blank" rel="noopener">localtimezone</a>.
     Where zones overlap, the map shows the one <code>GetOneZone</code> returns. Offsets are computed by your browser for today's date.
+    Boundary release <code id="version"></code>.
   </footer>
 </main>
 
@@ -197,6 +198,7 @@
 </div>
 
 <script>
+const VERSION = "{{.Version}}";
 const ZONES = {{.Zones}};
 const RASTER = "data:image/png;base64,{{.PNG}}";
 
@@ -206,6 +208,7 @@ const base = document.getElementById("base");
 const highlight = document.getElementById("highlight");
 const legend = document.getElementById("legend");
 const status = document.getElementById("status");
+document.getElementById("version").textContent = VERSION;
 
 let W = 0, H = 0, ids = null, boxes = null, meta = [];
 

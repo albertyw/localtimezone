@@ -140,7 +140,8 @@ func render(w io.Writer, r *raster) error {
 		return err
 	}
 	return tmpl.Execute(w, map[string]any{
-		"Zones": string(zones),
-		"PNG":   base64.StdEncoding.EncodeToString(pngData),
+		"Version": localtimezone.TZBoundaryVersion,
+		"Zones":   string(zones),
+		"PNG":     base64.StdEncoding.EncodeToString(pngData),
 	})
 }

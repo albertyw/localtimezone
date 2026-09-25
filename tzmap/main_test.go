@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"image/png"
+	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -109,11 +111,26 @@ func TestRender(t *testing.T) {
 	page := buf.String()
 	for _, want := range []string{
 		"<title>localtimezone World Map</title>",
+		`const VERSION = "` + localtimezone.TZBoundaryVersion + `";`,
 		`const ZONES = ["Africa/Cairo","America/New_York","Etc/GMT+3","Etc/GMT+6"];`,
 		`const RASTER = "data:image/png;base64,iVBOR`,
 	} {
 		if !strings.Contains(page, want) {
 			t.Errorf("rendered page is missing %q", want)
 		}
+	}
+}
+
+func TestMapVersion(t *testing.T) {
+	page, err := os.ReadFile("map.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	match := regexp.MustCompile(`const VERSION = "([^"]*)";`).FindSubmatch(page)
+	if match == nil {
+		t.Fatal("map.html has no VERSION variable")
+	}
+	if got := string(match[1]); got != localtimezone.TZBoundaryVersion {
+		t.Errorf("map.html version = %q, want %q; regenerate it with make map", got, localtimezone.TZBoundaryVersion)
 	}
 }
