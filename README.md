@@ -6,6 +6,8 @@
 [![Code Coverage](https://qlty.sh/gh/albertyw/projects/localtimezone/coverage.svg)](https://qlty.sh/gh/albertyw/projects/localtimezone)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+[![World map of timezones](tzmap/map.png)](https://html-preview.github.io/?url=https://github.com/albertyw/localtimezone/blob/master/tzmap/map.html)
+
 Provides timezone lookup for geographic coordinates.
 Based on [github.com/ugjka/go-tz](https://github.com/ugjka/go-tz).
 
@@ -111,7 +113,13 @@ make race
 # To run benchmarks
 make benchmark
 make benchmark-memory
+
+# To render the data as an interactive world map at tzmap/map.html
+# and a static image at tzmap/map.png
+make map
 ```
+
+The map rasterizes the world at 0.1° spacing with `GetOneZone`. Hovering a region shows its timezone, or the computed nautical UTC offset where no official timezone applies, and clicking opens the zone's Wikipedia page.
 
 The data comes from [timezone-boundary-builder](https://github.com/evansiroky/timezone-boundary-builder). Check the releases page for the latest version.
 

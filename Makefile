@@ -17,35 +17,53 @@ install-test-deps:
 	go install golang.org/x/vuln/cmd/govulncheck@latest
 
 .PHONY:test
-test: install-test-deps lint unit
+test: install-test-deps lint unit gomodtidy govulncheck
+
+.PHONY:gomodtidy
+gomodtidy:
 	go mod tidy
 	cd tzshapefilegen && go mod tidy
+	cd tzmap && go mod tidy
+
+.PHONY:govulncheck
+govulncheck:
 	govulncheck ./...
 	cd tzshapefilegen && govulncheck ./...
+	cd tzmap && govulncheck ./...
 
 .PHONY:lint
-lint:
+lint: govet golangci-lint
+	gofmt -e -l -d -s .
+
+.PHONY:govet
+govet:
 	go vet ./...
 	cd tzshapefilegen && go vet ./...
-	gofmt -e -l -d -s .
+	cd tzmap && go vet ./...
+
+.PHONY:golangci-lint
 	golangci-lint run ./...
 	cd tzshapefilegen && golangci-lint run ./...
+	cd tzmap && golangci-lint run ./...
 
 .PHONY:unit
 unit:
 	go test -coverprofile=c.out -covermode=atomic ./...
 	cd tzshapefilegen && go test -coverprofile=c.out -covermode=atomic ./...
+	cd tzmap && go test -coverprofile=c.out -covermode=atomic ./...
 
 .PHONY:cover
 cover: test
 	go tool cover -func=c.out
 	sed -i 's/github.com\/albertyw\/localtimezone\/v4\///g' c.out
 	cd tzshapefilegen && go tool cover -func=c.out
+	cd tzmap && go tool cover -func=c.out
 
 .PHONY:race
 race:
 	go test -race ./...
 	cd tzshapefilegen && go test -race ./...
+	cd tzmap && go test -race ./...
 
 .PHONY:benchmark
 benchmark:
@@ -58,6 +76,10 @@ benchmark-getzone:
 .PHONY:benchmark-clientinit
 benchmark-clientinit:
 	go test -bench=BenchmarkClientInit -benchmem -cpuprofile cpuprofile.out -memprofile memprofile.out
+
+.PHONY:map
+map:
+	cd tzmap && go run . -out map.html -image map.png
 
 .PHONY:benchmark-memory
 benchmark-memory:
