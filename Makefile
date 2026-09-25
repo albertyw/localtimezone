@@ -17,20 +17,31 @@ install-test-deps:
 	go install golang.org/x/vuln/cmd/govulncheck@latest
 
 .PHONY:test
-test: install-test-deps lint unit
+test: install-test-deps lint unit gomodtidy govulncheck
+
+.PHONY:gomodtidy
+gomodtidy:
 	go mod tidy
 	cd tzshapefilegen && go mod tidy
 	cd tzmap && go mod tidy
+
+.PHONY:govulncheck
+govulncheck:
 	govulncheck ./...
 	cd tzshapefilegen && govulncheck ./...
 	cd tzmap && govulncheck ./...
 
 .PHONY:lint
-lint:
+lint: govet golangci-lint
+	gofmt -e -l -d -s .
+
+.PHONY:govet
+govet:
 	go vet ./...
 	cd tzshapefilegen && go vet ./...
 	cd tzmap && go vet ./...
-	gofmt -e -l -d -s .
+
+.PHONY:golangci-lint
 	golangci-lint run ./...
 	cd tzshapefilegen && golangci-lint run ./...
 	cd tzmap && golangci-lint run ./...
