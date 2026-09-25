@@ -59,6 +59,10 @@ benchmark-getzone:
 benchmark-clientinit:
 	go test -bench=BenchmarkClientInit -benchmem -cpuprofile cpuprofile.out -memprofile memprofile.out
 
+.PHONY:map
+map:
+	go run ./tzmap -out tzmap/map.html
+
 .PHONY:benchmark-memory
 benchmark-memory:
 	go test -bench=BenchmarkClientMemory -benchmem -memprofile memprofile.out
