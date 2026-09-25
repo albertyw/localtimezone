@@ -6,6 +6,8 @@
 [![Code Coverage](https://qlty.sh/gh/albertyw/projects/localtimezone/coverage.svg)](https://qlty.sh/gh/albertyw/projects/localtimezone)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+[![World map of timezones](tzmap/map.png)](https://html-preview.github.io/?url=https://github.com/albertyw/localtimezone/blob/master/tzmap/map.html)
+
 Provides timezone lookup for geographic coordinates.
 Based on [github.com/ugjka/go-tz](https://github.com/ugjka/go-tz).
 
@@ -52,12 +54,6 @@ for _, zone:= range zones {
 Note: `GetZone()` may return an error only for out-of-range coordinates; it returns the nearest timezone for all valid locations.
 
 Uses timezone boundary data from [timezone-boundary-builder](https://github.com/evansiroky/timezone-boundary-builder/), indexed with [H3](https://h3geo.org/) hexagonal cells for fast lookups.
-
-## Map
-
-[![World map of timezones](tzmap/map.png)](https://html-preview.github.io/?url=https://github.com/albertyw/localtimezone/blob/master/tzmap/map.html)
-
-Every pixel above is one `GetOneZone` lookup. [Open the interactive map](https://html-preview.github.io/?url=https://github.com/albertyw/localtimezone/blob/master/tzmap/map.html) to hover over a region for its timezone and click through to its Wikipedia page.
 
 ## Features
 
