@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/albertyw/localtimezone/v4 v4.0.3
-	github.com/klauspost/compress v1.20.0
+	github.com/klauspost/compress v1.20.1
 	github.com/paulmach/orb v0.13.0
 	github.com/uber/h3-go/v4 v4.5.0
 )
