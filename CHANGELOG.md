@@ -1,6 +1,16 @@
 CHANGELOG
 =========
 
+v4.0.4 (2026-10-11)
+-------------------
+
+- Update to tzdata 2026e
+- Optimize `GetOneZone` and H3 cell computation
+- Generate [timezone borders on a map](https://html-preview.github.io/?url=https://github.com/albertyw/localtimezone/blob/master/tzmap/map.html)
+- Update dependencies
+- Add benchmarks for memory usage
+
+
 v4.0.3 (2026-09-16)
 -------------------
 
