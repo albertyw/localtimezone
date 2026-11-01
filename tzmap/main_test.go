@@ -132,7 +132,7 @@ func TestMapVersion(t *testing.T) {
 		t.Fatal("map.html has no VERSION variable")
 	}
 	if got := string(match[1]); got != localtimezone.TZBoundaryVersion {
-		t.Errorf("map.html version = %q, want %q; regenerate it with make map", got, localtimezone.TZBoundaryVersion)
+		t.Errorf("map.html version = %q, want %q; regenerate it with make generate", got, localtimezone.TZBoundaryVersion)
 	}
 }
 

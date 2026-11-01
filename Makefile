@@ -6,6 +6,7 @@ all: test
 .PHONY:generate
 generate:
 	go generate
+	cd tzmap && go run . -out map.html -image map.png
 
 .PHONY:clean
 clean:
@@ -76,10 +77,6 @@ benchmark-getzone:
 .PHONY:benchmark-clientinit
 benchmark-clientinit:
 	go test -bench=BenchmarkClientInit -benchmem -cpuprofile cpuprofile.out -memprofile memprofile.out
-
-.PHONY:map
-map:
-	cd tzmap && go run . -out map.html -image map.png
 
 .PHONY:benchmark-memory
 benchmark-memory:

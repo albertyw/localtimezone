@@ -113,10 +113,6 @@ make race
 # To run benchmarks
 make benchmark
 make benchmark-memory
-
-# To render the data as an interactive world map at tzmap/map.html
-# and a static image at tzmap/map.png
-make map
 ```
 
 The map rasterizes the world at 0.1° spacing with `GetOneZone`. Hovering a region shows its timezone, or the computed nautical UTC offset where no official timezone applies, and clicking opens the zone's Wikipedia page.
