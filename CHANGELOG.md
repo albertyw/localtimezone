@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+v4.0.5 (2026-11-05)
+-------------------
+
+- Update to tzdata 2026f
+- Update dependencies
+- CI cleanup
+
+
 v4.0.4 (2026-10-11)
 -------------------
 
